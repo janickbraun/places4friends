@@ -1,8 +1,8 @@
-import ProfileView from "@/components/ProfileView";
+import FriendsView from "@/components/FriendsView";
 import AuthPrompt from "@/components/AuthPrompt";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function ProfilePage() {
+export default async function FriendsPage() {
   const supabase = await createClient();
   const {
     data: { user },
@@ -12,7 +12,7 @@ export default async function ProfilePage() {
     return (
       <div className="flex flex-col min-h-screen bg-slate-50/50 pb-20 font-sans">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-center border-b border-slate-100 bg-white px-4">
-          <h1 className="text-lg font-bold text-slate-900">Mein Profil</h1>
+          <h1 className="text-lg font-bold text-slate-900">Freunde & Anfragen</h1>
         </header>
         <AuthPrompt context="profile" />
       </div>
@@ -26,13 +26,6 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .single();
 
-  // Fetch friend count
-  const { count: friendsCount } = await supabase
-    .from("friendships")
-    .select("*", { count: "exact", head: true })
-    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
-    .eq("status", "accepted");
-
   const userData = {
     id: user.id,
     email: user.email ?? "",
@@ -40,5 +33,5 @@ export default async function ProfilePage() {
     username: profile?.username ?? user.user_metadata?.username ?? null,
   };
 
-  return <ProfileView user={userData} friendsCount={friendsCount ?? 0} />;
+  return <FriendsView currentUser={userData} />;
 }

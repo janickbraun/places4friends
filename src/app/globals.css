@@ -17,11 +17,11 @@
   --color-brand-green-200: #c2e2c2;
   --color-brand-green-300: #9dd19d;
   --color-brand-green-400: #54ae54;
-  --color-brand-green-500: #2a7e2a; /* Natural forest tree green */
-  --color-brand-green-600: #226622;
-  --color-brand-green-700: #1b521b;
-  --color-brand-green-800: #153e15;
-  --color-brand-green-900: #0e2b0e; /* Darker nature/forest green */
+  --color-brand-green-500: #329632; /* Natural forest tree green - slightly brighter */
+  --color-brand-green-600: #2a7e2a;
+  --color-brand-green-700: #226622;
+  --color-brand-green-800: #1a521a; /* Distinctive green, clearly different from black */
+  --color-brand-green-900: #123912; /* Darker nature/forest green */
 }
 
 body {

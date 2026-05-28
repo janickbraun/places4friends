@@ -1,7 +1,9 @@
 "use client";
 
 import React from "react";
-import { Settings, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Settings, Sparkles, LogOut, UserPlus } from "lucide-react";
+import { signout } from "@/app/login/actions";
 
 interface User {
   id: string;
@@ -18,7 +20,7 @@ interface PlaceItem {
   timestamp: string;
 }
 
-export default function ProfileView({ user }: { user?: User }) {
+export default function ProfileView({ user, friendsCount = 0 }: { user?: User; friendsCount?: number }) {
   const places: PlaceItem[] = [
     {
       id: "1",
@@ -112,9 +114,12 @@ export default function ProfileView({ user }: { user?: User }) {
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-slate-100 bg-white px-4">
         <h1 className="text-lg font-bold text-slate-900">Mein Profil</h1>
         <div className="flex items-center gap-2">
-          <button onClick={async () => { await fetch('/api/auth/logout', { method: 'POST' }); window.location.href = '/login'; }} className="flex h-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all px-3">
-            Logout
-          </button>
+          <form action={signout}>
+            <button type="submit" className="flex h-8 items-center justify-center gap-1.5 rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all px-3 cursor-pointer">
+              <LogOut className="h-4 w-4" />
+              <span className="text-xs font-medium">Abmelden</span>
+            </button>
+          </form>
           <button className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all">
             <Settings className="h-5 w-5" />
           </button>
@@ -143,10 +148,19 @@ export default function ProfileView({ user }: { user?: User }) {
               <span className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">Empfehlungen</span>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center">
-              <span className="text-base font-extrabold text-slate-900">42</span>
+              <span className="text-base font-extrabold text-slate-900">{friendsCount}</span>
               <span className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">Freunde</span>
             </div>
           </div>
+
+          {/* Add Friends Button */}
+          <Link
+            href="/profile/friends"
+            className="mt-4 flex items-center justify-center gap-1.5 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 py-2.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <UserPlus className="h-4 w-4 text-brand-green-700" />
+            Freunde hinzufügen
+          </Link>
         </div>
 
         {/* Activity Feed Section */}
