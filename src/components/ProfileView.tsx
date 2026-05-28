@@ -41,9 +41,13 @@ export default function ProfileView({
               <span className="text-xs font-medium">Abmelden</span>
             </button>
           </form>
-          <button className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all">
+          <Link
+            href="/profile/settings"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all"
+            aria-label="Einstellungen"
+          >
             <Settings className="h-5 w-5" />
-          </button>
+          </Link>
         </div>
       </header>
 
