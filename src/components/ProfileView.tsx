@@ -1,7 +1,8 @@
 "use client";
 
 import React from "react";
-import { Settings, Sparkles, LogOut } from "lucide-react";
+import Link from "next/link";
+import { Settings, Sparkles, LogOut, UserPlus } from "lucide-react";
 import { signout } from "@/app/login/actions";
 
 interface User {
@@ -19,7 +20,7 @@ interface PlaceItem {
   timestamp: string;
 }
 
-export default function ProfileView({ user }: { user?: User }) {
+export default function ProfileView({ user, friendsCount = 0 }: { user?: User; friendsCount?: number }) {
   const places: PlaceItem[] = [
     {
       id: "1",
@@ -147,10 +148,19 @@ export default function ProfileView({ user }: { user?: User }) {
               <span className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">Empfehlungen</span>
             </div>
             <div className="flex flex-1 flex-col items-center justify-center">
-              <span className="text-base font-extrabold text-slate-900">42</span>
+              <span className="text-base font-extrabold text-slate-900">{friendsCount}</span>
               <span className="text-[10px] font-medium tracking-wide text-slate-400 uppercase">Freunde</span>
             </div>
           </div>
+
+          {/* Add Friends Button */}
+          <Link
+            href="/profile/friends"
+            className="mt-4 flex items-center justify-center gap-1.5 w-full max-w-[280px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50 active:scale-[0.98] text-slate-700 py-2.5 text-xs font-bold shadow-sm transition-all cursor-pointer"
+          >
+            <UserPlus className="h-4 w-4 text-brand-green-700" />
+            Freunde hinzufügen
+          </Link>
         </div>
 
         {/* Activity Feed Section */}
