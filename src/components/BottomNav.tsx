@@ -18,8 +18,8 @@ export default function BottomNav() {
     const active = isTabActive(path);
     return `flex flex-col items-center justify-center gap-1 w-20 py-2 rounded-xl transition-all duration-200 ${
       active
-        ? "text-brand-green-800 font-semibold scale-105"
-        : "text-black hover:text-brand-green-800/80 active:scale-95"
+        ? "text-brand-green-600 font-bold scale-105"
+        : "text-slate-400 hover:text-slate-600 active:scale-95"
     }`;
   };
 
@@ -28,19 +28,19 @@ export default function BottomNav() {
       <div className="flex h-16 items-center justify-around px-4">
         {/* Map Tab */}
         <Link href="/" className={getTabClass("/")}>
-          <MapPin className="h-5 w-5 stroke-[2.2]" />
+          <MapPin className={`h-5 w-5 transition-all duration-200 ${isTabActive("/") ? "stroke-[2.6]" : "stroke-[2]"}`} />
           <span className="text-[10px] tracking-wide">Karte</span>
         </Link>
 
         {/* Create / Recommend Tab */}
         <Link href="/create" className={getTabClass("/create")}>
-          <Plus className="h-5 w-5 stroke-[2.5]" />
+          <Plus className={`h-5 w-5 transition-all duration-200 ${isTabActive("/create") ? "stroke-[2.8]" : "stroke-[2]"}`} />
           <span className="text-[10px] tracking-wide">Empfehlen</span>
         </Link>
 
         {/* Profile Tab */}
         <Link href="/profile" className={getTabClass("/profile")}>
-          <User className="h-5 w-5 stroke-[2.2]" />
+          <User className={`h-5 w-5 transition-all duration-200 ${isTabActive("/profile") ? "stroke-[2.6]" : "stroke-[2]"}`} />
           <span className="text-[10px] tracking-wide">Profil</span>
         </Link>
       </div>
