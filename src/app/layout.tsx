@@ -32,7 +32,7 @@ export default function RootLayout({
       className={`${inter.variable} h-full antialiased bg-slate-50`}
       suppressHydrationWarning
     >
-      <body className="h-full flex justify-center items-center overflow-hidden">
+      <body className="h-full flex justify-center items-center overflow-hidden" suppressHydrationWarning>
         {/* Mobile Device Frame for Desktop, Fullscreen for Mobile */}
         <div className="relative flex flex-col w-full max-w-md h-full bg-white shadow-2xl md:border-x md:border-slate-100 overflow-hidden">
           {/* Main content scrollable wrapper */}

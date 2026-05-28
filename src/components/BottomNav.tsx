@@ -11,7 +11,7 @@ export default function BottomNav() {
     if (path === "/") {
       return pathname === "/";
     }
-    return pathname === path;
+    return pathname.startsWith(path);
   };
 
   const getTabClass = (path: string) => {
