@@ -280,7 +280,7 @@ export default function MapViewContent() {
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
           style={{ width: "100%", height: "100%" }}
-          mapStyle="mapbox://styles/mapbox/light-v11"
+          mapStyle={currentStyle}
           mapboxAccessToken={mapboxToken}
         >
           {filteredPlaces.map((place) => (
@@ -349,6 +349,39 @@ export default function MapViewContent() {
               </div>
             </Popup>
           )}
+
+          {/* Map Style Selector - inside Map so absolute positioning works correctly */}
+          <div className="absolute bottom-6 right-4 z-10 flex flex-col items-end gap-2">
+            {isStyleMenuOpen && (
+              <div className="flex flex-col gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100/50 shadow-xl">
+                {MAP_STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => {
+                      setCurrentStyle(style.url);
+                      setIsStyleMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl text-left transition-all duration-200 cursor-pointer min-w-[120px] ${
+                      currentStyle === style.url
+                        ? "bg-brand-green-800 text-white"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {style.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 ${
+                isStyleMenuOpen ? "ring-2 ring-brand-green-700 text-brand-green-800" : ""
+              }`}
+              title="Kartenstil ändern"
+            >
+              <Layers className="h-5 w-5" />
+            </button>
+          </div>
         </Map>
       </div>
 
@@ -377,6 +410,7 @@ export default function MapViewContent() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
