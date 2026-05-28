@@ -11,15 +11,15 @@ export default function BottomNav() {
     if (path === "/") {
       return pathname === "/";
     }
-    return pathname === path;
+    return pathname.startsWith(path);
   };
 
   const getTabClass = (path: string) => {
     const active = isTabActive(path);
     return `flex flex-col items-center justify-center gap-1 w-20 py-2 rounded-xl transition-all duration-200 ${
       active
-        ? "bg-brand-green-800 text-white font-medium shadow-md shadow-brand-green-800/10 scale-105"
-        : "text-brand-green-800 hover:bg-brand-green-50/60 hover:text-brand-green-900 active:scale-95"
+        ? "text-brand-green-800 font-semibold scale-105"
+        : "text-black hover:text-brand-green-800/80 active:scale-95"
     }`;
   };
 

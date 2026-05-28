@@ -178,24 +178,9 @@ export default function MapViewContent() {
 
   return (
     <div className="relative h-full w-full flex-1 flex flex-col">
-      {/* Floating Search Header */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between gap-2 rounded-2xl border border-slate-100 bg-white/95 p-3.5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-md">
-        <div className="flex flex-1 items-center gap-2.5">
-          <Search className="h-4.5 w-4.5 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Orte deiner Freunde suchen..."
-            className="w-full bg-transparent text-[14px] text-slate-800 placeholder-slate-400 outline-none font-sans"
-          />
-        </div>
-        <div className="h-5 w-[1px] bg-slate-200/80 mx-1" />
-        <button className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 hover:text-slate-800 active:scale-95 transition-all">
-          <Users className="h-4.5 w-4.5" />
-        </button>
-      </div>
 
       {/* Floating Friends Filter Bar */}
-      <div className="absolute top-[76px] left-4 right-4 z-10 flex gap-2 overflow-x-auto no-scrollbar py-1">
+      <div className="absolute top-4 left-4 right-4 z-10 flex gap-2 overflow-x-auto no-scrollbar py-1">
         <button
           onClick={() => handleSelectUser(null)}
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
