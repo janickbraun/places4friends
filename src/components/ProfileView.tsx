@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Settings, Sparkles, ArrowRight, Check } from "lucide-react";
+import { Settings, Sparkles, Check } from "lucide-react";
 
 interface PlaceItem {
   id: string;
@@ -33,6 +33,69 @@ export default function ProfileView() {
       isMustSee: false,
       review: "Sehr leckeres Essen beim Street Food Thursday, allerdings mittlerweile extrem voll. Trotzdem einen Besuch wert!",
       timestamp: "vor 3 Tagen",
+    },
+    {
+      id: "4",
+      name: "Michelberger Restaurant",
+      isMustSee: true,
+      review: "Fantastisches Farm-to-Table-Konzept. Die Karte wechselt oft und der Innenhof ist besonders an lauen Sommerabenden magisch.",
+      timestamp: "vor 5 Tagen",
+    },
+    {
+      id: "5",
+      name: "Bonanza Coffee Roasters",
+      isMustSee: false,
+      review: "Ausgezeichneter Flat White im wunderschönen, ruhig gelegenen Hinterhof in Kreuzberg. Ein absolutes Muss für Kaffeeliebhaber.",
+      timestamp: "vor 1 Woche",
+    },
+    {
+      id: "6",
+      name: "Klunkerkranich",
+      isMustSee: true,
+      review: "Bester Blick über die Dächer von Neukölln. Perfekt für einen Drink zum Sonnenuntergang, man sollte aber früh da sein.",
+      timestamp: "vor 1 Woche",
+    },
+    {
+      id: "7",
+      name: "Voo Store",
+      isMustSee: false,
+      review: "Wunderschön gestalteter Concept Store im Hinterhof. Die Auswahl an Mode und Magazinen ist kuratiert und das kleine Café im Laden ist klasse.",
+      timestamp: "vor 2 Wochen",
+    },
+    {
+      id: "8",
+      name: "Clärchens Ballhaus",
+      isMustSee: false,
+      review: "Ein Berliner Klassiker. Der Biergarten im vorderen Hof hat eine wunderbare Atmosphäre für ein spätes Abendessen oder ein kühles Getränk.",
+      timestamp: "vor 3 Wochen",
+    },
+    {
+      id: "9",
+      name: "Do You Read Me?!",
+      isMustSee: true,
+      review: "Die beste Auswahl an internationalen Magazinen, Kunstbüchern und Indie-Publikationen in Mitte. Man findet immer etwas Inspirierendes.",
+      timestamp: "vor 1 Monat",
+    },
+    {
+      id: "10",
+      name: "Insel der Jugend",
+      isMustSee: false,
+      review: "Ein kleiner Rückzugsort mitten in der Spree. Ideal, um ein Tretboot zu leihen oder einfach mit Freunden auf der Wiese am Wasser zu entspannen.",
+      timestamp: "vor 1 Monat",
+    },
+    {
+      id: "11",
+      name: "Zola",
+      isMustSee: true,
+      review: "Hervorragende neapolitanische Pizza direkt am Landwehrkanal. Der Teig ist perfekt fluffig und die Zutaten sind super frisch.",
+      timestamp: "vor 2 Monaten",
+    },
+    {
+      id: "12",
+      name: "Coda Dessert Bar",
+      isMustSee: false,
+      review: "Ein ganz besonderes kulinarisches Erlebnis. Dessert-Konzepte auf Sterneniveau, perfekt kombiniert mit perfekt abgestimmten Drinks.",
+      timestamp: "vor 3 Monaten",
     },
   ];
 
@@ -81,12 +144,8 @@ export default function ProfileView() {
         <div className="mt-8 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-              Zuletzt empfohlene Orte
+              Meine Empfehlungen
             </h3>
-            <button className="flex items-center gap-0.5 text-[11px] font-semibold text-brand-green-700 hover:underline">
-              Alle ansehen
-              <ArrowRight className="h-3 w-3" />
-            </button>
           </div>
 
           {/* Places List */}

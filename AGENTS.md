@@ -31,3 +31,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 ### Code Quality
 - Write clean TypeScript with strict typing (avoid `any` where possible).
 
+### Browser Usage
+- Do NOT open the browser unless explicitly requested in the user prompt or for testing very complex tasks.
+
+
