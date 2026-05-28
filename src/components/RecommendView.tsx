@@ -7,11 +7,8 @@ import {
   Check,
   Sparkles,
   MapPin,
-  LocateFixed,
   Loader2,
 } from "lucide-react";
-
-type SearchMode = "nearby" | "anywhere";
 
 interface PlaceResult {
   id: string;
@@ -24,15 +21,10 @@ interface PlaceResult {
 
 export default function RecommendView() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchMode, setSearchMode] = useState<SearchMode>("nearby");
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
   const [customPlaceAddress, setCustomPlaceAddress] = useState("");
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationStatus, setLocationStatus] = useState<
-    "idle" | "loading" | "ready" | "error"
-  >("idle");
   const [isSuperLike, setIsSuperLike] = useState(false);
   const [description, setDescription] = useState("");
   const [isSearching, setIsSearching] = useState(false);
@@ -56,49 +48,11 @@ export default function RecommendView() {
     setDescription("");
   };
 
-  const requestLocation = async () => {
-    if (!navigator.geolocation) {
-      setLocationStatus("error");
-      setFeedback({
-        type: "error",
-        message: "Standort ist in diesem Browser nicht verfuegbar.",
-      });
-      return null;
-    }
-
-    setLocationStatus("loading");
-    return new Promise<{ lat: number; lng: number } | null>((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const nextCoords = {
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          };
-          setCoords(nextCoords);
-          setLocationStatus("ready");
-          resolve(nextCoords);
-        },
-        () => {
-          setLocationStatus("error");
-          setFeedback({
-            type: "error",
-            message: "Standort konnte nicht bestimmt werden.",
-          });
-          resolve(null);
-        },
-        { enableHighAccuracy: false, timeout: 10000 }
-      );
-    });
-  };
-
   const runSearch = async () => {
     setFeedback(null);
     setIsSearching(true);
 
-    let activeCoords = coords;
-    if (searchMode === "nearby" && !coords) {
-      activeCoords = await requestLocation();
-    }
+    let activeCoords: { lat: number; lng: number } | null = null;
 
     const params = new URLSearchParams();
     if (searchQuery.trim()) {
@@ -108,8 +62,6 @@ export default function RecommendView() {
       params.set("lat", String(activeCoords.lat));
       params.set("lng", String(activeCoords.lng));
     }
-    params.set("mode", searchMode);
-
     try {
       const response = await fetch(`/api/places/search?${params.toString()}`);
       const data = await response.json();
@@ -223,7 +175,7 @@ export default function RecommendView() {
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Ort suchen oder in der Naehe schauen"
+                    placeholder="Ort suchen"
                     className="w-full bg-transparent text-[14px] text-slate-800 placeholder-slate-400 outline-none"
                   />
                 </div>
@@ -237,42 +189,6 @@ export default function RecommendView() {
                 </button>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setSearchMode("nearby")}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
-                    searchMode === "nearby"
-                      ? "bg-brand-green-700 text-white"
-                      : "bg-white text-slate-500 border border-slate-200"
-                  }`}
-                >
-                  In der Naehe
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSearchMode("anywhere")}
-                  className={`rounded-full px-3 py-1 text-[11px] font-semibold transition-all ${
-                    searchMode === "anywhere"
-                      ? "bg-brand-green-700 text-white"
-                      : "bg-white text-slate-500 border border-slate-200"
-                  }`}
-                >
-                  Ueberall
-                </button>
-                <button
-                  type="button"
-                  onClick={requestLocation}
-                  className="ml-auto inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold text-slate-500 transition-all hover:border-slate-300"
-                >
-                  <LocateFixed className="h-3.5 w-3.5" />
-                  {locationStatus === "loading"
-                    ? "Standort..."
-                    : locationStatus === "ready"
-                    ? "Standort bereit"
-                    : "Standort"}
-                </button>
-              </div>
             </div>
 
             {feedback?.type === "error" && (
