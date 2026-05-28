@@ -34,7 +34,7 @@ export default function RootLayout({
     >
       <body className="h-full flex justify-center items-center overflow-hidden" suppressHydrationWarning>
         {/* Mobile Device Frame for Desktop, Fullscreen for Mobile */}
-        <div className="relative flex flex-col w-full max-w-md h-full bg-white shadow-2xl md:border-x md:border-slate-100 overflow-hidden">
+        <div className="relative flex flex-col w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl h-full bg-white shadow-2xl sm:border-x sm:border-slate-100 overflow-hidden">
           {/* Main content scrollable wrapper */}
           <main className="flex-1 overflow-y-auto w-full no-scrollbar pb-4 bg-slate-50/20">
             {children}
