@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo, useState } from "react";
+import Map, { Marker } from "react-map-gl/mapbox";
 import {
   Search,
   MessageSquare,
@@ -36,7 +37,12 @@ export default function RecommendView() {
   const [searchResults, setSearchResults] = useState<PlaceResult[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<PlaceResult | null>(null);
   const [customPlaceName, setCustomPlaceName] = useState("");
-  const [customPlaceAddress, setCustomPlaceAddress] = useState("");
+  const [customCoords, setCustomCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [customViewState, setCustomViewState] = useState({
+    longitude: 12.1016,
+    latitude: 49.0151,
+    zoom: 11,
+  });
   const [isSuperLike, setIsSuperLike] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [description, setDescription] = useState("");
@@ -56,7 +62,7 @@ export default function RecommendView() {
     setSearchResults([]);
     setSelectedPlace(null);
     setCustomPlaceName("");
-    setCustomPlaceAddress("");
+    setCustomCoords(null);
     setIsSuperLike(false);
     setSelectedCategories([]);
     setDescription("");
@@ -122,9 +128,9 @@ export default function RecommendView() {
       : {
           placeId: null,
           placeName: customPlaceName.trim(),
-          placeAddress: customPlaceAddress.trim() || null,
-          latitude: null,
-          longitude: null,
+          placeAddress: null,
+          latitude: customCoords?.lat ?? null,
+          longitude: customCoords?.lng ?? null,
         };
 
     setIsSaving(true);
@@ -238,7 +244,6 @@ export default function RecommendView() {
                       onClick={() => {
                         setSelectedPlace(place);
                         setCustomPlaceName("");
-                        setCustomPlaceAddress("");
                       }}
                       className={`w-full rounded-xl border px-3 py-2 text-left transition-all ${
                         selectedPlace?.id === place.id
@@ -274,13 +279,55 @@ export default function RecommendView() {
                   placeholder="Name des Ortes"
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green-500"
                 />
-                <input
-                  type="text"
-                  value={customPlaceAddress}
-                  onChange={(e) => setCustomPlaceAddress(e.target.value)}
-                  placeholder="Adresse oder Stadt (optional)"
-                  className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-brand-green-500"
-                />
+                <div className="rounded-xl border border-slate-100 bg-slate-50 p-2">
+                  <div className="mb-2 flex items-center justify-between text-[11px] font-semibold text-slate-500">
+                    <span>Pin auf der Karte setzen (optional)</span>
+                    {customCoords && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomCoords(null)}
+                        className="text-[10px] font-semibold text-slate-400 hover:text-slate-600"
+                      >
+                        Pin entfernen
+                      </button>
+                    )}
+                  </div>
+                  <div className="h-44 overflow-hidden rounded-lg border border-slate-200 bg-white">
+                    {process.env.NEXT_PUBLIC_MAPBOX_TOKEN ? (
+                      <Map
+                        {...customViewState}
+                        onMove={(evt) => setCustomViewState(evt.viewState)}
+                        onClick={(evt) => {
+                          const { lng, lat } = evt.lngLat;
+                          setCustomCoords({ lat, lng });
+                          setSelectedPlace(null);
+                        }}
+                        style={{ width: "100%", height: "100%" }}
+                        mapStyle="mapbox://styles/mapbox/light-v11"
+                        mapboxAccessToken={process.env.NEXT_PUBLIC_MAPBOX_TOKEN}
+                      >
+                        {customCoords && (
+                          <Marker
+                            longitude={customCoords.lng}
+                            latitude={customCoords.lat}
+                            anchor="bottom"
+                          >
+                            <div className="flex h-7 w-7 items-center justify-center rounded-full bg-brand-green-700 text-white shadow-lg shadow-brand-green-700/30">
+                              <MapPin className="h-4 w-4" />
+                            </div>
+                          </Marker>
+                        )}
+                      </Map>
+                    ) : (
+                      <div className="flex h-full items-center justify-center text-center text-[11px] text-slate-400 px-3">
+                        Mapbox Token fehlt. Bitte `NEXT_PUBLIC_MAPBOX_TOKEN` setzen.
+                      </div>
+                    )}
+                  </div>
+                  <p className="mt-2 text-[11px] text-slate-400">
+                    Tipp: Klicke auf die Karte, um den Pin zu setzen.
+                  </p>
+                </div>
               </div>
             </div>
 
