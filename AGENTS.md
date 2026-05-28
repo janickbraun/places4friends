@@ -28,6 +28,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Ensure the UI looks premium, using consistent colors (harmonious palettes: slate/slate-950, brand-green, and warm amber for Highlights).
 - Always use smooth transitions and responsive design.
 
-### Code Quality & Linter Compliance
+### Code Quality
 - Write clean TypeScript with strict typing (avoid `any` where possible).
-- Before completing any task, run `npm run lint` and resolve all warnings and errors (such as unused variables or imports).
+
