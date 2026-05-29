@@ -11,7 +11,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "places4friends",
-  description: "Ein Letterboxd für Orte, die du mit deinen Freunden teilen willst.",
+  description: "Teile und erkunde interessante Orte mit deinen Freunden.",
 };
 
 export const viewport: Viewport = {
