@@ -148,6 +148,7 @@ export default function ProfileView({
   const cropCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const cropImageRef = useRef<HTMLImageElement | null>(null);
   const isDraggingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
   const lastDragPosRef = useRef<{ x: number; y: number } | null>(null);
 
   const cropPreviewSize = 220;
@@ -368,12 +369,16 @@ export default function ProfileView({
   };
 
   const handleCropPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    event.currentTarget.setPointerCapture(event.pointerId);
     isDraggingRef.current = true;
+    activePointerIdRef.current = event.pointerId;
     lastDragPosRef.current = { x: event.clientX, y: event.clientY };
   };
 
   const handleCropPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || !cropCenter) return;
+    if (!isDraggingRef.current || activePointerIdRef.current !== event.pointerId || !cropCenter) return;
+    event.preventDefault();
     const last = lastDragPosRef.current;
     if (!last) return;
     const settings = getCropSettings();
@@ -391,7 +396,13 @@ export default function ProfileView({
     setCropCenter(next);
   };
 
-  const handleCropPointerUp = () => {
+  const handleCropPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (activePointerIdRef.current === event.pointerId) {
+      activePointerIdRef.current = null;
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
     isDraggingRef.current = false;
     lastDragPosRef.current = null;
   };
@@ -1268,11 +1279,12 @@ export default function ProfileView({
                 ref={cropCanvasRef}
                 width={cropPreviewSize}
                 height={cropPreviewSize}
-                className="rounded-full border border-slate-200 bg-slate-50"
+                className="touch-none select-none rounded-full border border-slate-200 bg-slate-50 cursor-grab active:cursor-grabbing"
                 onPointerDown={handleCropPointerDown}
                 onPointerMove={handleCropPointerMove}
                 onPointerUp={handleCropPointerUp}
                 onPointerLeave={handleCropPointerUp}
+                onPointerCancel={handleCropPointerUp}
               />
             </div>
 
