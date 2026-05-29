@@ -114,6 +114,7 @@ export default function ProfileView({
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const avatarInputRef = useRef<HTMLInputElement | null>(null);
   const cropCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -513,7 +514,6 @@ export default function ProfileView({
   };
 
   const deletePlace = async (placeId: string) => {
-    if (!globalThis.confirm("Empfehlung wirklich loeschen?") ) return;
     setDeletingId(placeId);
     setActionError(null);
     try {
@@ -528,6 +528,7 @@ export default function ProfileView({
       if (editingId === placeId) {
         cancelEdit();
       }
+      setDeleteConfirmId(null);
     } catch (error) {
       setActionError(
         error instanceof Error ? error.message : "Loeschen fehlgeschlagen."
@@ -902,30 +903,33 @@ export default function ProfileView({
                             rows={3}
                             className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-brand-green-500"
                           />
-                        </div>
-                      }
-                      actions={
-                        editingId === place.id ? (
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-end gap-2 pt-3 mt-3 border-t border-slate-100">
+                            <button
+                              type="button"
+                              onClick={cancelEdit}
+                              className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-white px-3.5 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer"
+                            >
+                              <X className="h-3.5 w-3.5" />
+                              Abbrechen
+                            </button>
                             <button
                               type="button"
                               onClick={() => saveEdit(place.id)}
                               disabled={isSaving}
-                              className="inline-flex items-center gap-1 rounded-lg border border-brand-green-600 bg-brand-green-600 px-2.5 py-1 text-[10px] font-semibold text-white shadow-sm disabled:opacity-60 cursor-pointer"
+                              className="inline-flex items-center gap-1 rounded-xl bg-brand-green-700 px-3.5 py-2 text-xs font-bold text-white shadow-md shadow-brand-green-700/10 active:scale-[0.98] transition-all disabled:opacity-60 cursor-pointer"
                             >
-                              <Check className="h-3 w-3" />
+                              {isSaving ? (
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                              ) : (
+                                <Check className="h-3.5 w-3.5" />
+                              )}
                               Speichern
                             </button>
-                            <button
-                              type="button"
-                              onClick={cancelEdit}
-                              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-slate-500 cursor-pointer"
-                            >
-                              <X className="h-3 w-3" />
-                              Abbrechen
-                            </button>
                           </div>
-                        ) : (
+                        </div>
+                      }
+                      actions={
+                        editingId === place.id ? null : (
                           <div className="relative">
                             <button
                               type="button"
@@ -951,7 +955,7 @@ export default function ProfileView({
                                 <button
                                   type="button"
                                   onClick={() => {
-                                    deletePlace(place.id);
+                                    setDeleteConfirmId(place.id);
                                     setActiveMenuId(null);
                                   }}
                                   disabled={deletingId === place.id}
@@ -1220,6 +1224,48 @@ export default function ProfileView({
                 className="rounded-lg bg-brand-green-700 px-3 py-2 text-[11px] font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300"
               >
                 {isUploadingAvatar ? "Speichert..." : "Speichern"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmId && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-sm p-4 animate-in fade-in duration-200"
+          onClick={() => setDeleteConfirmId(null)}
+        >
+          <div 
+            className="w-full max-w-xs bg-white rounded-3xl p-5 shadow-xl border border-slate-100 flex flex-col items-center text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600 mb-3.5">
+              <Trash2 className="h-5 w-5" />
+            </div>
+            <h3 className="text-sm font-bold text-slate-900 mb-1.5">Empfehlung löschen</h3>
+            <p className="text-xs text-slate-500 mb-5 leading-relaxed">
+              Möchtest du diese Empfehlung wirklich unwiderruflich löschen?
+            </p>
+            <div className="flex gap-3 w-full">
+              <button
+                type="button"
+                onClick={() => setDeleteConfirmId(null)}
+                className="flex-1 rounded-xl border border-slate-200 py-3 text-xs font-semibold text-slate-600 hover:bg-slate-50 active:scale-[0.98] transition-all cursor-pointer"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={() => deletePlace(deleteConfirmId)}
+                disabled={deletingId === deleteConfirmId}
+                className="flex-1 flex items-center justify-center gap-1.5 rounded-xl bg-red-600 py-3 text-xs font-semibold text-white hover:bg-red-700 shadow-lg shadow-red-600/10 active:scale-[0.98] transition-all disabled:opacity-60 cursor-pointer"
+              >
+                {deletingId === deleteConfirmId ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  "Löschen"
+                )}
               </button>
             </div>
           </div>

@@ -124,6 +124,26 @@ export async function DELETE(
     .eq("user_id", user.id)
     .maybeSingle();
 
+  // 1. Delete associated comments first (to avoid foreign key constraint violations)
+  const { error: commentsError } = await supabase
+    .from("activity_comments")
+    .delete()
+    .eq("activity_id", id);
+
+  if (commentsError) {
+    console.error("Failed to delete comments associated with activity:", commentsError);
+  }
+
+  // 2. Delete associated wishlist entries first (to avoid foreign key constraint violations)
+  const { error: wishlistError } = await supabase
+    .from("wishlist")
+    .delete()
+    .eq("activity_id", id);
+
+  if (wishlistError) {
+    console.error("Failed to delete wishlist entries associated with activity:", wishlistError);
+  }
+
   const { data, error } = await supabase
     .from("activities")
     .delete()
@@ -140,7 +160,7 @@ export async function DELETE(
       code: error.code,
     });
     return NextResponse.json(
-      { error: "Empfehlung konnte nicht geloescht werden." },
+      { error: "Empfehlung konnte nicht gelöscht werden." },
       { status: 500 }
     );
   }

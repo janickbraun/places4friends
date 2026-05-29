@@ -95,6 +95,11 @@ export default function ActivityCard({
       {isEditing && editForm ? (
         <div className="space-y-3">
           {editForm}
+          {actions && (
+            <div className="flex justify-end pt-3 border-t border-slate-100">
+              {actions}
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-2">
