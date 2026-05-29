@@ -29,6 +29,7 @@ interface Place {
   review: string;
   categories: string[];
   imageUrls?: string[];
+  createdAt: string;
 }
 
 interface ActivityComment {
@@ -103,6 +104,7 @@ export default function MapViewContent() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   const [currentStyle, setCurrentStyle] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("mapStyle") ?? "mapbox://styles/mapbox/streets-v12";
@@ -230,7 +232,7 @@ export default function MapViewContent() {
         const allowedUserIds = [authUser.id, ...loadedFriends.map((f) => f.id)];
         const { data: activities } = await supabase
           .from("activities")
-          .select("id, user_id, place_id, place_name, place_address, latitude, longitude, is_superlike, description, categories, image_urls")
+          .select("id, user_id, place_id, place_name, place_address, latitude, longitude, is_superlike, description, categories, image_urls, created_at")
           .in("user_id", allowedUserIds);
 
         const loadedPlaces = (activities || [])
@@ -256,6 +258,7 @@ export default function MapViewContent() {
               review: act.description || "",
               categories: Array.isArray(act.categories) ? act.categories : [],
               imageUrls: Array.isArray(act.image_urls) ? act.image_urls : [],
+              createdAt: act.created_at,
             };
           });
 
@@ -900,63 +903,6 @@ export default function MapViewContent() {
               </div>
             )}
           </div>
-      {/* Floating Friends Filter Bar or Add Friends Button */}
-      {!isLoading && (
-        user && friends.length > 0 ? (
-          <div className="absolute left-0 right-0 z-10 top-[56px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
-            <button
-              onClick={() => {
-                setSelectedUsers([]);
-                setSelectedPlace(null);
-              }}
-              className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
-                selectedUsers.length === 0
-                  ? "bg-brand-green-800 border-brand-green-800 text-white"
-                  : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
-              }`}
-            >
-              <Users className="h-3.5 w-3.5" />
-              <span>Alle</span>
-            </button>
-
-            {friends.map((friend) => (
-              <button
-                key={friend.id}
-                onClick={() => handleToggleUser(friend.id)}
-                className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
-                  selectedUsers.includes(friend.id)
-                    ? "bg-brand-green-800 border-brand-green-800 text-white"
-                    : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
-                }`}
-              >
-                <div className={`flex h-5 w-5 items-center justify-center overflow-hidden rounded-full text-[9px] font-bold text-white ${friend.color}`}>
-                  {friend.avatarUrl ? (
-                    <img
-                      src={friend.avatarUrl}
-                      alt="Profilbild"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    friend.initials
-                  )}
-                </div>
-                <span>{friend.name}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="absolute left-0 right-0 z-10 top-[56px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
-            <Link
-              href="/profile/friends"
-              className="flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-100 bg-white/95 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95"
-            >
-              <UserPlus className="h-3.5 w-3.5" />
-              <span>Freunde hinzufügen</span>
-            </Link>
-          </div>
-        )
-      )}
-
 
           {/* Suggestions Dropdown */}
           {showSuggestions && (suggestions.length > 0 || isSearching) && (
@@ -1015,6 +961,63 @@ export default function MapViewContent() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Floating Friends Filter Bar or Add Friends Button */}
+      {!isLoading && (
+        user && friends.length > 0 ? (
+          <div className="absolute left-0 right-0 z-10 top-[72px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
+            <button
+              onClick={() => {
+                setSelectedUsers([]);
+                setSelectedPlace(null);
+              }}
+              className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
+                selectedUsers.length === 0
+                  ? "bg-brand-green-800 border-brand-green-800 text-white"
+                  : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
+              }`}
+            >
+              <Users className="h-3.5 w-3.5" />
+              <span>Alle</span>
+            </button>
+
+            {friends.map((friend) => (
+              <button
+                key={friend.id}
+                onClick={() => handleToggleUser(friend.id)}
+                className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
+                  selectedUsers.includes(friend.id)
+                    ? "bg-brand-green-800 border-brand-green-800 text-white"
+                    : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
+                }`}
+              >
+                <div className={`flex h-5 w-5 items-center justify-center overflow-hidden rounded-full text-[9px] font-bold text-white ${friend.color}`}>
+                  {friend.avatarUrl ? (
+                    <img
+                      src={friend.avatarUrl}
+                      alt="Profilbild"
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    friend.initials
+                  )}
+                </div>
+                <span>{friend.name}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="absolute left-0 right-0 z-10 top-[72px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
+            <Link
+              href="/profile/friends"
+              className="flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-100 bg-white/95 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95"
+            >
+              <UserPlus className="h-3.5 w-3.5" />
+              <span>Freunde hinzufügen</span>
+            </Link>
+          </div>
+        )
       )}
 
 
@@ -1086,27 +1089,17 @@ export default function MapViewContent() {
               <div className="p-3 bg-white rounded-xl shadow-lg text-slate-800">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="font-bold text-sm text-slate-900">{selectedPlace.name}</h4>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     {selectedPlace.isMustSee && (
                       <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 ring-1 ring-amber-600/15 flex-shrink-0">
                         <Sparkles className="h-2.5 w-2.5 text-amber-500 fill-amber-400 animate-pulse" />
                         Must See
                       </span>
                     )}
-                    {user && selectedPlace.userId !== user.id && (
-                      <button
-                        onClick={() => toggleWishlist(selectedPlace.id)}
-                        className="flex h-6 w-6 items-center justify-center rounded-full hover:bg-slate-100 active:scale-90 transition-all cursor-pointer flex-shrink-0"
-                        title={wishlistIds.includes(selectedPlace.id) ? "Aus Wishlist entfernen" : "In Wishlist speichern"}
-                      >
-                        <Bookmark
-                          className={`h-3.5 w-3.5 transition-colors ${
-                            wishlistIds.includes(selectedPlace.id)
-                              ? "text-brand-green-700 fill-brand-green-700"
-                              : "text-slate-400 hover:text-brand-green-700"
-                          }`}
-                        />
-                      </button>
+                    {selectedPlace.createdAt && (
+                      <span className="text-[10px] text-slate-400 font-medium select-none">
+                        {formatCommentTimestamp(selectedPlace.createdAt)}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -1136,7 +1129,7 @@ export default function MapViewContent() {
                       <div
                         key={idx}
                         className="relative aspect-square rounded-lg overflow-hidden border border-slate-100 bg-slate-50 cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => window.open(url, "_blank")}
+                        onClick={() => setActiveImageUrl(url)}
                       >
                         <img src={url} alt={`Bild ${idx + 1}`} className="h-full w-full object-cover" />
                       </div>
@@ -1157,13 +1150,29 @@ export default function MapViewContent() {
                   </div>
                 )}
 
-                <div className="mt-3 flex items-center">
+                <div className="mt-3 flex items-center gap-2">
+                  {user && selectedPlace.userId !== user.id && (
+                    <button
+                      onClick={() => toggleWishlist(selectedPlace.id)}
+                      className={`flex items-center justify-center active:scale-90 transition-all cursor-pointer p-0.5 ${
+                        wishlistIds.includes(selectedPlace.id)
+                          ? "text-brand-green-700"
+                          : "text-slate-500 hover:text-brand-green-800"
+                      }`}
+                      title={wishlistIds.includes(selectedPlace.id) ? "Aus Wishlist entfernen" : "In Wishlist speichern"}
+                    >
+                      <Bookmark
+                        className="h-4.5 w-4.5 transition-colors"
+                        fill={wishlistIds.includes(selectedPlace.id) ? "currentColor" : "none"}
+                      />
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={openComments}
-                    className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-brand-green-800 transition-colors cursor-pointer p-0.5"
                   >
-                    <MessageCircle className="h-4 w-4 text-slate-400" />
+                    <MessageCircle className="h-4 w-4 transition-colors" />
                     <span>{comments.length}</span>
                   </button>
                 </div>
@@ -1172,20 +1181,7 @@ export default function MapViewContent() {
           )}
 
           {/* Map Style & Location controls - inside Map so absolute positioning works correctly */}
-          <div className="absolute bottom-24 right-4 z-10 flex flex-col items-end gap-2">
-            <button
-              onClick={handleLocateUser}
-              disabled={isLocating}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 disabled:opacity-50"
-              title="Meinen Standort anzeigen"
-            >
-              {isLocating ? (
-                <Loader2 className="h-5 w-5 animate-spin text-brand-green-700" />
-              ) : (
-                <Locate className="h-5 w-5" />
-              )}
-            </button>
-
+          <div className="absolute bottom-[calc(64px+8px+env(safe-area-inset-bottom))] right-4 z-10 flex flex-col items-end gap-2">
             {isStyleMenuOpen && (
               <div className="flex flex-col gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100/50 shadow-xl">
                 {MAP_STYLES.map((style) => (
@@ -1207,14 +1203,28 @@ export default function MapViewContent() {
                 ))}
               </div>
             )}
+
             <button
               onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 ${
+              className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 outline-none focus:outline-none ${
                 isStyleMenuOpen ? "ring-2 ring-brand-green-700 text-brand-green-800" : ""
               }`}
               title="Kartenstil ändern"
             >
               <Layers className="h-5 w-5" />
+            </button>
+
+            <button
+              onClick={handleLocateUser}
+              disabled={isLocating}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-150 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 disabled:opacity-50 outline-none focus:outline-none"
+              title="Meinen Standort anzeigen"
+            >
+              {isLocating ? (
+                <Loader2 className="h-5 w-5 animate-spin text-brand-green-700" />
+              ) : (
+                <Locate className="h-5 w-5" />
+              )}
             </button>
           </div>
         </Map>
@@ -1222,7 +1232,7 @@ export default function MapViewContent() {
 
       {/* Floating Login/Register Prompt Modal at the bottom when logged out */}
       {!isLoading && !user && (
-        <div className="absolute bottom-20 left-4 right-4 z-20 bg-white/95 border border-slate-150 p-5 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col gap-3">
+        <div className="absolute bottom-[calc(64px+8px+env(safe-area-inset-bottom))] left-4 right-4 z-20 bg-white/95 p-5 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col gap-3">
           <div>
 
           {isCommentsOpen && selectedPlace && (
@@ -1413,6 +1423,24 @@ export default function MapViewContent() {
             >
               Registrieren
             </Link>
+          </div>
+        </div>
+      )}
+
+      {/* Lightbox Modal */}
+      {activeImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm transition-all duration-300"
+          onClick={() => setActiveImageUrl(null)}
+        >
+          <div className="relative max-h-[90vh] max-w-[90vw] overflow-hidden rounded-2xl bg-black shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <img src={activeImageUrl} alt="Fullscreen View" className="max-h-[85vh] max-w-[85vw] object-contain" />
+            <button
+              onClick={() => setActiveImageUrl(null)}
+              className="absolute top-4 right-4 flex h-8 w-8 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/85 transition-colors cursor-pointer"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
         </div>
       )}
