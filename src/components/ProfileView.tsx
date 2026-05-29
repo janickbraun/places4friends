@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Settings, Sparkles, LogOut, UserPlus, MapPin, Pencil, Trash2, X, Check, Bookmark, Loader2 } from "lucide-react";
+import { Settings, Sparkles, LogOut, UserPlus, MapPin, Pencil, Trash2, X, Check, Bookmark, Loader2, Menu, Shield, FileText } from "lucide-react";
 import { signout } from "@/app/login/actions";
 import { createClient } from "@/lib/supabase/client";
 import ActivityCard from "./ActivityCard";
@@ -87,6 +87,7 @@ export default function ProfileView({
   const [items, setItems] = useState<PlaceItem[]>(places);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(wishlist);
   const [activeTab, setActiveTab] = useState<"recommendations" | "wishlist">("recommendations");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [avatarPath, setAvatarPath] = useState<string | null>(user?.avatarUrl ?? null);
   const [avatarPublicUrl, setAvatarPublicUrl] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
@@ -648,22 +649,67 @@ export default function ProfileView({
   return (
     <div className="flex flex-col min-h-screen bg-slate-50/50 pb-20 font-sans">
       {/* Header */}
-        <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-slate-100 bg-white px-4">
+      <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-slate-100 bg-white px-4">
         <h1 className="text-lg font-bold text-slate-900">Mein Profil</h1>
-        <div className="flex items-center gap-2">
-          <form action={signout}>
-            <button type="submit" className="flex h-8 items-center justify-center gap-1.5 rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all px-3 cursor-pointer">
-              <LogOut className="h-4 w-4" />
-              <span className="text-xs font-medium">Abmelden</span>
-            </button>
-          </form>
-          <Link
-            href="/profile/settings"
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all"
-            aria-label="Einstellungen"
+        <div className="relative">
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="flex h-9 w-9 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
+            aria-label="Menü öffnen"
           >
-            <Settings className="h-5 w-5" />
-          </Link>
+            <Menu className="h-5 w-5" />
+          </button>
+
+          {isMenuOpen && (
+            <>
+              {/* Backdrop */}
+              <div
+                className="fixed inset-0 z-40 bg-transparent"
+                onClick={() => setIsMenuOpen(false)}
+              />
+              {/* Dropdown Menu */}
+              <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-slate-100 bg-white p-2 shadow-xl ring-1 ring-black/5 focus:outline-none z-50 animate-in fade-in slide-in-from-top-2 duration-100">
+                <Link
+                  href="/profile/settings"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-98 transition-all cursor-pointer"
+                >
+                  <Settings className="h-4.5 w-4.5 text-slate-400" />
+                  <span>Einstellungen</span>
+                </Link>
+
+                <Link
+                  href="/datenschutz"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-98 transition-all cursor-pointer"
+                >
+                  <Shield className="h-4.5 w-4.5 text-slate-400" />
+                  <span>Datenschutzerklärung</span>
+                </Link>
+
+                <Link
+                  href="/impressum"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-98 transition-all cursor-pointer"
+                >
+                  <FileText className="h-4.5 w-4.5 text-slate-400" />
+                  <span>Impressum</span>
+                </Link>
+
+                <div className="my-1 border-t border-slate-100" />
+
+                <form action={signout} onSubmit={() => setIsMenuOpen(false)}>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
+                  >
+                    <LogOut className="h-4.5 w-4.5" />
+                    <span>Abmelden</span>
+                  </button>
+                </form>
+              </div>
+            </>
+          )}
         </div>
       </header>
 
