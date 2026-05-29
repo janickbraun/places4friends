@@ -244,6 +244,8 @@ export default function RecommendView() {
 
   const handleCloseForm = () => {
     setFormStep("map");
+    setPinCoords(null);
+    setSelectedSearchResult(null);
   };
 
   const resetAll = () => {
@@ -468,16 +470,6 @@ export default function RecommendView() {
         )}
       </div>
 
-      {/* ── Map hint (only when map step) ── */}
-      {formStep === "map" && (
-        <div className="absolute bottom-28 left-1/2 -translate-x-1/2 z-20 pointer-events-none">
-          <div className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-md text-white text-xs font-semibold px-4 py-2.5 rounded-full shadow-xl whitespace-nowrap">
-            <MapPin className="h-3.5 w-3.5 text-brand-green-400" />
-            Ort suchen oder auf Karte tippen
-          </div>
-        </div>
-      )}
-
       {/* ── Bottom Sheet Form ── */}
       <div
         onClick={(e) => e.stopPropagation()}
@@ -485,12 +477,15 @@ export default function RecommendView() {
         onMouseUp={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
-        className={`absolute left-0 right-0 bottom-0 z-30 transition-transform duration-500 ease-out will-change-transform ${
+        className={`absolute left-0 right-0 z-30 transition-transform duration-500 ease-out will-change-transform ${
           formStep === "form" ? "translate-y-0" : "translate-y-full pointer-events-none invisible"
         }`}
-        style={{ maxHeight: "80vh" }}
+        style={{ 
+          bottom: "calc(3rem + env(safe-area-inset-bottom))",
+          maxHeight: "calc(80vh - 3rem - env(safe-area-inset-bottom))"
+        }}
       >
-        <div className="bg-white rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden" style={{ maxHeight: "80vh" }}>
+        <div className="bg-white rounded-t-3xl shadow-[0_-8px_40px_rgba(0,0,0,0.12)] flex flex-col overflow-hidden" style={{ maxHeight: "calc(80vh - 3rem - env(safe-area-inset-bottom))" }}>
           {/* Sheet Handle */}
           <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-slate-100 flex-shrink-0">
             <div className="flex items-center gap-2">
