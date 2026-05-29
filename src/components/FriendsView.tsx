@@ -12,7 +12,9 @@ import {
   User, 
   Check, 
   X,
-  MoreVertical
+  MoreVertical,
+  Share2,
+  Sparkles
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -56,6 +58,32 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [submittingIds, setSubmittingIds] = useState<Record<string, boolean>>({});
   const [activeDropdownFriendId, setActiveDropdownFriendId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const handleShareInviteLink = async () => {
+    const inviteUrl = `${window.location.origin}/profile/${currentUser.id}?invite=true`;
+    const shareData = {
+      title: "places4friends",
+      text: "Lass uns auf places4friends befreundet sein, um unsere Lieblingsorte auf einer gemeinsamen Karte zu sehen!",
+      url: inviteUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+      } catch (err) {
+        console.error("Error sharing:", err);
+      }
+    } else {
+      try {
+        await navigator.clipboard.writeText(inviteUrl);
+        setCopied(true);
+        setTimeout(() => setCopied(false), 2000);
+      } catch (err) {
+        console.error("Failed to copy to clipboard:", err);
+      }
+    }
+  };
 
   const getAvatarPublicUrl = (path?: string | null) => {
     if (!path) return null;
@@ -323,6 +351,33 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
             {/* MY FRIENDS TAB */}
             {activeTab === "friends" && (
               <div className="space-y-4">
+                {/* Per Link einladen card */}
+                <div className="rounded-2xl border border-brand-green-100 bg-gradient-to-br from-brand-green-50/30 to-brand-green-50/70 p-4 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+                  <div className="flex items-start gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-green-100 text-brand-green-700 flex-shrink-0">
+                      <Sparkles className="h-4 w-4 fill-brand-green-200" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-xs font-bold text-slate-900">
+                        Freunde per Link einladen
+                      </h3>
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        Teile deinen persönlichen Einladungslink mit Freunden. Sobald sie ihn öffnen, seid ihr direkt befreundet.
+                      </p>
+                      
+                      <div className="mt-3 flex items-center gap-2">
+                        <button
+                          onClick={handleShareInviteLink}
+                          className="inline-flex items-center gap-1.5 rounded-xl bg-brand-green-700 hover:bg-brand-green-800 text-white font-bold px-4 py-2 cursor-pointer text-[10px] transition-all active:scale-[0.97] shadow-sm shadow-brand-green-700/10"
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          <span>{copied ? "Link kopiert!" : "Einladungslink teilen"}</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 {friendsList.length > 0 && (
                   <button
                     onClick={() => setIsSearchModalOpen(true)}

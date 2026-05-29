@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { ArrowLeft, Bookmark, MapPin, X, Loader2, UserPlus, UserCheck, Clock, UserMinus, MessageCircle, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Bookmark, MapPin, X, Loader2, UserPlus, UserCheck, Clock, UserMinus, MessageCircle, MoreVertical, Pencil, Trash2, Sparkles } from "lucide-react";
 import ActivityCard from "./ActivityCard";
 import { createClient } from "@/lib/supabase/client";
 
@@ -53,6 +53,7 @@ export default function PublicProfileView({
   initialWishlistedIds = [],
   initialFriendship = null,
   currentUserId,
+  isInvite = false,
 }: {
   friend: User;
   friendsCount?: number;
@@ -60,6 +61,7 @@ export default function PublicProfileView({
   initialWishlistedIds?: string[];
   initialFriendship?: Friendship | null;
   currentUserId: string;
+  isInvite?: boolean;
 }) {
   const [wishlistIds, setWishlistIds] = useState<string[]>(initialWishlistedIds);
   const [avatarPublicUrl, setAvatarPublicUrl] = useState<string | null>(null);
@@ -149,6 +151,48 @@ export default function PublicProfileView({
       }
     } catch (err) {
       console.error("Error removing friendship:", err);
+    } finally {
+      setIsSubmittingFriendship(false);
+    }
+  };
+
+  const handleAcceptInvite = async () => {
+    setIsSubmittingFriendship(true);
+    try {
+      const response = await fetch("/api/friendships/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ inviteeId: friend.id }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Invite API call failed");
+      }
+
+      const result = await response.json();
+
+      if (result.fallback) {
+        // Fallback: use client-side supabase calls
+        if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
+          await acceptFriendRequest();
+        } else if (!friendship) {
+          await sendFriendRequest();
+        }
+      } else if (result.success && result.friendship) {
+        const wasAccepted = friendship?.status === "accepted";
+        setFriendship(result.friendship);
+        if (result.friendship.status === "accepted" && !wasAccepted) {
+          setLocalFriendsCount((prev) => prev + 1);
+        }
+      }
+    } catch (err) {
+      console.error("Error accepting invite:", err);
+      // Fallback: use client-side supabase calls
+      if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
+        await acceptFriendRequest();
+      } else if (!friendship) {
+        await sendFriendRequest();
+      }
     } finally {
       setIsSubmittingFriendship(false);
     }
@@ -480,6 +524,44 @@ export default function PublicProfileView({
       </header>
 
       <div className="flex-grow overflow-y-auto px-4 pt-6 page-transition">
+        {isInvite && (!friendship || friendship.status === "pending") && (
+          <div className="mb-6 rounded-2xl border border-brand-green-100 bg-gradient-to-br from-brand-green-50/40 to-brand-green-50 p-4 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-green-100 text-brand-green-700 flex-shrink-0">
+                <Sparkles className="h-4 w-4 fill-brand-green-200" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-xs font-bold text-slate-900">
+                  Einladung von {friend.name?.split(" ")[0] ?? "Freund"}
+                </h3>
+                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                  Verbinde dich direkt, um eure Lieblingsorte gegenseitig auf der Karte zu sehen und Highlights zu teilen.
+                </p>
+                
+                <div className="mt-3.5">
+                  {isSubmittingFriendship ? (
+                    <button
+                      disabled
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-[10px] font-bold text-slate-400"
+                    >
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Verbinden...</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleAcceptInvite}
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-green-700 hover:bg-brand-green-800 text-white font-bold px-4 py-2 cursor-pointer text-[10px] transition-all active:scale-[0.97] shadow-sm shadow-brand-green-700/10"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      <span>Einladung annehmen</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Profile Card Info */}
         <div className="flex flex-col items-center text-center">
           {/* Avatar */}
