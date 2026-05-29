@@ -135,13 +135,9 @@ export default function ActivityCard({
           </div>
 
           {/* Description / Review Text */}
-          {description ? (
+          {description && description.trim() !== "" && (
             <p className="text-xs leading-relaxed text-slate-600 pl-5">
               {description}
-            </p>
-          ) : (
-            <p className="text-xs italic text-slate-400 pl-5">
-              Keine Beschreibung hinterlassen.
             </p>
           )}
 

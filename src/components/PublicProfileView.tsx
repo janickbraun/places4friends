@@ -314,14 +314,12 @@ export default function PublicProfileView({
                 <span>Anfrage annehmen</span>
               </button>
             ) : (
-              <button
-                onClick={removeFriendship}
-                className="inline-flex items-center gap-2 rounded-xl bg-slate-150 hover:bg-red-50 hover:text-red-650 active:scale-95 transition-all text-slate-650 font-bold px-4.5 py-2 cursor-pointer text-xs border border-slate-200/50"
-                title="Freund entfernen"
+              <div
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4.5 py-2 text-slate-600 font-bold text-xs border border-slate-200/40 cursor-default"
               >
                 <UserCheck className="h-3.5 w-3.5 text-brand-green-700" />
                 <span>Befreundet</span>
-              </button>
+              </div>
             )}
           </div>
         </div>
