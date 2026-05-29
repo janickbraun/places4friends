@@ -286,7 +286,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/40 backdrop-blur-sm transition-all duration-300">
           <div className="w-full max-w-sm overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-2xl flex flex-col animate-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-4 bg-white">
               <h2 className="text-sm font-bold text-rose-600 flex items-center gap-2">
