@@ -23,13 +23,8 @@ export async function login(formData: FormData) {
     return { error: "Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen." };
   }
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const onboardingCompleted = user?.user_metadata?.onboarding_completed;
-
   revalidatePath("/", "layout");
-  redirect(onboardingCompleted === true ? "/profile" : "/");
+  redirect("/");
 }
 
 export async function signup(formData: FormData) {

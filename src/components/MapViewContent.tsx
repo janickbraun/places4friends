@@ -83,6 +83,17 @@ const MAP_STYLES = [
   { id: "outdoors", name: "Outdoor", url: "mapbox://styles/mapbox/outdoors-v12" },
 ];
 
+const POPUP_OFFSETS: { [key: string]: [number, number] } = {
+  'top': [0, 10],
+  'top-left': [0, 10],
+  'top-right': [0, 10],
+  'bottom': [0, -42],
+  'bottom-left': [0, -42],
+  'bottom-right': [0, -42],
+  'left': [14, -16],
+  'right': [-14, -16]
+};
+
 export default function MapViewContent() {
   const supabase = createClient();
   const searchParams = useSearchParams();
@@ -1081,14 +1092,21 @@ export default function MapViewContent() {
               latitude={selectedPlace.latitude}
               longitude={selectedPlace.longitude}
               onClose={() => setSelectedPlace(null)}
-              anchor="top"
               closeButton={false}
               className="z-20 font-sans custom-map-popup"
               maxWidth="260px"
+              offset={POPUP_OFFSETS}
             >
               <div className="p-3 bg-white rounded-xl shadow-lg text-slate-800">
                 <div className="flex items-start justify-between gap-2">
-                  <h4 className="font-bold text-sm text-slate-900">{selectedPlace.name}</h4>
+                  <Link
+                    href={`/activities/${selectedPlace.id}`}
+                    className="group/popup-link cursor-pointer hover:underline decoration-brand-green-700/40"
+                  >
+                    <h4 className="font-bold text-sm text-slate-900 group-hover/popup-link:text-brand-green-700 transition-colors">
+                      {selectedPlace.name}
+                    </h4>
+                  </Link>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     {selectedPlace.isMustSee && (
                       <span className="inline-flex items-center gap-0.5 rounded-md bg-amber-50 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 ring-1 ring-amber-600/15 flex-shrink-0">
@@ -1116,7 +1134,15 @@ export default function MapViewContent() {
                       selectedPlace.userInitials
                     )}
                   </div>
-                  <span>Empfohlen von {selectedPlace.userName}</span>
+                  <span>
+                    Empfohlen von{" "}
+                    <Link
+                      href={user && selectedPlace.userId === user.id ? "/profile" : `/profile/${selectedPlace.userId}`}
+                      className="font-semibold text-slate-700 hover:text-brand-green-700 hover:underline transition-colors cursor-pointer"
+                    >
+                      {selectedPlace.userName}
+                    </Link>
+                  </span>
                 </div>
 
                 <p className="mt-2 text-xs text-slate-600 leading-relaxed">
@@ -1126,13 +1152,13 @@ export default function MapViewContent() {
                 {selectedPlace.imageUrls && selectedPlace.imageUrls.length > 0 && (
                   <div className="mt-2.5 grid grid-cols-3 gap-1">
                     {selectedPlace.imageUrls.map((url, idx) => (
-                      <div
+                      <Link
                         key={idx}
+                        href={`/activities/${selectedPlace.id}`}
                         className="relative aspect-square rounded-lg overflow-hidden border border-slate-100 bg-slate-50 cursor-pointer hover:opacity-90 transition-opacity"
-                        onClick={() => setActiveImageUrl(url)}
                       >
                         <img src={url} alt={`Bild ${idx + 1}`} className="h-full w-full object-cover" />
-                      </div>
+                      </Link>
                     ))}
                   </div>
                 )}
@@ -1167,14 +1193,13 @@ export default function MapViewContent() {
                       />
                     </button>
                   )}
-                  <button
-                    type="button"
-                    onClick={openComments}
+                  <Link
+                    href={`/activities/${selectedPlace.id}`}
                     className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-brand-green-800 transition-colors cursor-pointer p-0.5"
                   >
                     <MessageCircle className="h-4 w-4 transition-colors" />
                     <span>{comments.length}</span>
-                  </button>
+                  </Link>
                 </div>
               </div>
             </Popup>
