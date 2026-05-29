@@ -25,11 +25,11 @@ export default function ImpressumPage() {
         </div>
 
         <section className="space-y-2">
-          <h3 className="text-base font-bold text-slate-900">Betreiber der Anwendung</h3>
-          <p className="font-semibold text-slate-800">places4friends GbR</p>
+          <h3 className="text-base font-bold text-slate-900">Diensteanbieter</h3>
+          <p className="font-semibold text-slate-800">Janick Braun</p>
           <p>
-            Musterstraße 123<br />
-            10115 Berlin<br />
+            Ruhe am Bach 5d<br />
+            82377 Penzberg<br />
             Deutschland
           </p>
         </section>
@@ -37,30 +37,26 @@ export default function ImpressumPage() {
         <section className="space-y-2">
           <h3 className="text-base font-bold text-slate-900">Kontakt</h3>
           <p>
-            Telefon: +49 (0) 30 1234567<br />
-            E-Mail: support@places4friends.de
+            Telefon: +49 (0) 160 98640952<br />
+            E-Mail: <a href="mailto:janick@secondskate.de" className="text-brand-green-700 hover:underline">janick@secondskate.de</a>
           </p>
         </section>
 
         <section className="space-y-2">
-          <h3 className="text-base font-bold text-slate-900">Vertretungsberechtigte Gesellschafter</h3>
-          <p>Max Mustermann, Erika Musterfrau</p>
+          <h3 className="text-base font-bold text-slate-900">Verbraucherstreitbeilegung</h3>
+          <p>
+            Wir sind nicht bereit oder verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.
+          </p>
         </section>
 
         <section className="space-y-2">
           <h3 className="text-base font-bold text-slate-900">Haftungsausschluss</h3>
-          <p className="font-semibold text-slate-800">Haftung für Inhalte</p>
+          <p className="font-semibold text-slate-800">Haftung für Inhalte und Links</p>
           <p>
             Als Diensteanbieter sind wir gemäß § 7 Abs.1 TMG für eigene Inhalte auf diesen Seiten nach den allgemeinen
-            Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir als Diensteanbieter jedoch nicht verpflichtet,
-            übermittelte oder gespeicherte fremde Informationen zu überwachen oder nach Umständen zu forschen, die auf
-            eine rechtswidrige Tätigkeit hinweisen.
-          </p>
-          <p className="font-semibold text-slate-800">Haftung für Links</p>
-          <p>
-            Unser Angebot enthält Links zu externen Websites Dritter, auf deren Inhalte wir keinen Einfluss haben.
-            Deshalb können wir für diese fremden Inhalte auch keine Gewähr übernehmen. Für die Inhalte der verlinkten
-            Seiten ist stets der jeweilige Anbieter oder Betreiber der Seiten verantwortlich.
+            Gesetzen verantwortlich. Nach §§ 8 bis 10 TMG sind wir jedoch nicht verpflichtet, übermittelte oder gespeicherte
+            fremde Informationen zu überwachen. Bei Bekanntwerden von entsprechenden Rechtsverletzungen werden wir diese
+            Inhalte oder Links umgehend entfernen.
           </p>
         </section>
       </div>
