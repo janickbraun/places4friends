@@ -71,24 +71,15 @@ export default function ActivityCard({
         <div className="space-y-3">
           {/* TOP: Place Name and Must See */}
           <div className="flex items-start justify-between gap-3">
-            {hasCoordinates ? (
-              <Link
-                href={`/?lat=${latitude}&lng=${longitude}&placeId=${id}`}
-                className="flex items-center gap-1.5 group/link cursor-pointer hover:underline decoration-brand-green-700/40"
-              >
-                <MapPin className="h-4 w-4 text-brand-green-700 flex-shrink-0 group-hover/link:text-brand-green-800 transition-colors" />
-                <h3 className="font-bold text-base text-slate-900 group-hover/link:text-brand-green-700 transition-colors">
-                  {placeName}
-                </h3>
-              </Link>
-            ) : (
-              <div className="flex items-center gap-1.5">
-                <MapPin className="h-4 w-4 text-brand-green-700 flex-shrink-0" />
-                <h3 className="font-bold text-base text-slate-900">
-                  {placeName}
-                </h3>
-              </div>
-            )}
+            <Link
+              href={`/activities/${id}`}
+              className="flex items-center gap-1.5 group/link cursor-pointer hover:underline decoration-brand-green-700/40"
+            >
+              <MapPin className="h-4 w-4 text-brand-green-700 flex-shrink-0 group-hover/link:text-brand-green-800 transition-colors" />
+              <h3 className="font-bold text-base text-slate-900 group-hover/link:text-brand-green-700 transition-colors">
+                {placeName}
+              </h3>
+            </Link>
             
             {/* Top Right Actions (like Edit menu) & Must See & Timestamp */}
             <div className="flex items-center gap-2 flex-shrink-0">
