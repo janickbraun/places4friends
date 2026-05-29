@@ -173,7 +173,7 @@ export default function PublicProfileView({
 
       if (result.fallback) {
         // Fallback: use client-side supabase calls to immediately establish accepted friendship
-        if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
+        if (friendship && friendship.status === "pending") {
           await acceptFriendRequest();
         } else if (!friendship) {
           const { data, error } = await supabase
@@ -201,7 +201,7 @@ export default function PublicProfileView({
       console.error("Error accepting invite:", err);
       // Fallback: use client-side supabase calls to immediately establish accepted friendship
       try {
-        if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
+        if (friendship && friendship.status === "pending") {
           await acceptFriendRequest();
         } else if (!friendship) {
           const { data, error } = await supabase

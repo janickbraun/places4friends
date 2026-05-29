@@ -70,27 +70,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ success: true, friendship: relation });
     }
 
-    // If there is an incoming request from the inviter, accept it automatically
-    if (relation.status === "pending" && relation.receiver_id === user.id) {
-      const { data: updated, error: updateError } = await supabaseAdmin
-        .from("friendships")
-        .update({ status: "accepted" })
-        .eq("id", relation.id)
-        .select()
-        .single();
+    // If it is pending, update it to accepted (regardless of who sent it)
+    const { data: updated, error: updateError } = await supabaseAdmin
+      .from("friendships")
+      .update({ status: "accepted" })
+      .eq("id", relation.id)
+      .select()
+      .single();
 
-      if (updateError) {
-        console.error("Error updating friendship status:", updateError);
-        return NextResponse.json(
-          { error: "Einladung konnte nicht angenommen werden." },
-          { status: 500 }
-        );
-      }
-      return NextResponse.json({ success: true, friendship: updated });
+    if (updateError) {
+      console.error("Error updating friendship status:", updateError);
+      return NextResponse.json(
+        { error: "Einladung konnte nicht angenommen werden." },
+        { status: 500 }
+      );
     }
-
-    // If there is an outgoing request from the current user, keep it as is
-    return NextResponse.json({ success: true, friendship: relation });
+    return NextResponse.json({ success: true, friendship: updated });
   }
 
   // If no relationship exists, auto-establish an accepted friendship
