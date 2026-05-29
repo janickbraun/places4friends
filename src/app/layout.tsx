@@ -12,10 +12,14 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "places4friends",
   description: "Teile und erkunde interessante Orte mit deinen Freunden.",
+  icons: {
+    icon: "/logo-round.png",
+    apple: "/logo.jpg",
+  },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#2a7e2a",
+  themeColor: "#226622",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,

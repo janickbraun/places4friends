@@ -11,17 +11,17 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   
-  /* Nature/forest green brand colors */
-  --color-brand-green-50: #f4f9f4;
-  --color-brand-green-100: #e7f3e7;
-  --color-brand-green-200: #c2e2c2;
-  --color-brand-green-300: #9dd19d;
-  --color-brand-green-400: #54ae54;
-  --color-brand-green-500: #329632; /* Natural forest tree green - slightly brighter */
-  --color-brand-green-600: #2a7e2a;
+  /* Nature/forest green brand colors - all mapped to #226622 with no solid variations */
+  --color-brand-green-50: rgba(34, 102, 34, 0.05);
+  --color-brand-green-100: rgba(34, 102, 34, 0.10);
+  --color-brand-green-200: rgba(34, 102, 34, 0.20);
+  --color-brand-green-300: rgba(34, 102, 34, 0.30);
+  --color-brand-green-400: #226622;
+  --color-brand-green-500: #226622;
+  --color-brand-green-600: #226622;
   --color-brand-green-700: #226622;
-  --color-brand-green-800: #1a521a; /* Distinctive green, clearly different from black */
-  --color-brand-green-900: #123912; /* Darker nature/forest green */
+  --color-brand-green-800: #226622;
+  --color-brand-green-900: #226622;
 }
 
 body {
