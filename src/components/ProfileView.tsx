@@ -57,6 +57,7 @@ interface ActivityComment {
   userColor: string;
   content: string;
   createdAt: string;
+  userAvatarUrl?: string | null;
 }
 
 const CATEGORY_OPTIONS = [
@@ -399,6 +400,7 @@ export default function ProfileView({
           userColor: getUserColorClass(row.user_id),
           content: row.content,
           createdAt: row.created_at,
+          userAvatarUrl: profile?.avatar_url ?? null,
         };
 
         if (!grouped[comment.activityId]) {
@@ -959,9 +961,17 @@ export default function ProfileView({
                           <div className="mt-2 space-y-2">
                             {(commentsByPlace[place.id] ?? []).map((comment) => (
                               <div key={comment.id} className="flex gap-2">
-                                <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white ${comment.userColor}`}>
-                                  {comment.userInitials}
-                                </div>
+                                {comment.userAvatarUrl ? (
+                                  <img
+                                    src={comment.userAvatarUrl}
+                                    alt={comment.userName}
+                                    className="h-5 w-5 rounded-full object-cover flex-shrink-0"
+                                  />
+                                ) : (
+                                  <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white flex-shrink-0 ${comment.userColor}`}>
+                                    {comment.userInitials}
+                                  </div>
+                                )}
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2">
                                     <span className="text-[10px] font-semibold text-slate-700">
