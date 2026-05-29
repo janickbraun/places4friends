@@ -11,7 +11,8 @@ import {
   Loader2, 
   User, 
   Check, 
-  X 
+  X,
+  MoreVertical
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 
@@ -53,6 +54,7 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
   const [incomingRequests, setIncomingRequests] = useState<(Profile & { friendshipId: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingIds, setSubmittingIds] = useState<Record<string, boolean>>({});
+  const [activeDropdownFriendId, setActiveDropdownFriendId] = useState<string | null>(null);
 
   const getAvatarPublicUrl = (path?: string | null) => {
     if (!path) return null;
@@ -337,7 +339,11 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
                             className="flex items-center gap-3 hover:opacity-80 active:scale-[0.98] transition-all cursor-pointer group"
                           >
                             {/* Avatar */}
-                            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white font-bold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200">
+                            <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200 ${
+                              friend.avatarUrl 
+                                ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
+                                : "bg-slate-200 text-slate-600 border border-slate-300/40"
+                            }`}>
                               {friend.avatarUrl ? (
                                 <img
                                   src={friend.avatarUrl}
@@ -358,17 +364,42 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
                             </div>
                           </Link>
 
-                          <div className="flex items-center">
+                          <div className="relative flex items-center">
                             {isSubmitting ? (
                               <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                             ) : (
-                              <button
-                                onClick={() => deleteFriendship(friend.friendshipId, friend.id)}
-                                className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all cursor-pointer"
-                                title="Freund entfernen"
-                              >
-                                <UserMinus className="h-4 w-4" />
-                              </button>
+                              <>
+                                <button
+                                  onClick={() => setActiveDropdownFriendId(activeDropdownFriendId === friend.id ? null : friend.id)}
+                                  className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition-all cursor-pointer"
+                                  title="Optionen anzeigen"
+                                >
+                                  <MoreVertical className="h-4.5 w-4.5" />
+                                </button>
+
+                                {activeDropdownFriendId === friend.id && (
+                                  <>
+                                    {/* Backdrop */}
+                                    <div
+                                      className="fixed inset-0 z-40 bg-transparent"
+                                      onClick={() => setActiveDropdownFriendId(null)}
+                                    />
+                                    {/* Dropdown Menu */}
+                                    <div className="absolute right-0 top-full mt-1 w-36 origin-top-right rounded-xl border border-slate-100 bg-white p-1 shadow-lg ring-1 ring-black/5 z-50 animate-in fade-in slide-in-from-top-1 duration-100">
+                                      <button
+                                        onClick={() => {
+                                          setActiveDropdownFriendId(null);
+                                          deleteFriendship(friend.friendshipId, friend.id);
+                                        }}
+                                        className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-xs font-semibold text-rose-600 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
+                                      >
+                                        <UserMinus className="h-3.5 w-3.5" />
+                                        <span>Freund entfernen</span>
+                                      </button>
+                                    </div>
+                                  </>
+                                )}
+                              </>
                             )}
                           </div>
                         </div>
@@ -412,7 +443,11 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
                         <div key={req.id} className="flex items-center justify-between p-3 first:pt-2 last:pb-2">
                           <div className="flex items-center gap-3">
                             {/* Avatar */}
-                            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white font-bold text-xs shadow-sm">
+                            <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm ${
+                              req.avatarUrl 
+                                ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
+                                : "bg-slate-200 text-slate-600 border border-slate-300/40"
+                            }`}>
                               {req.avatarUrl ? (
                                 <img
                                   src={req.avatarUrl}
@@ -540,7 +575,11 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
                         <div key={profile.id} className="flex items-center justify-between p-3 first:pt-2 last:pb-2">
                           <div className="flex items-center gap-3">
                             {/* Avatar */}
-                            <div className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white font-bold text-xs shadow-sm">
+                            <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm ${
+                              profile.avatarUrl 
+                                ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
+                                : "bg-slate-200 text-slate-600 border border-slate-300/40"
+                            }`}>
                               {profile.avatarUrl ? (
                                 <img
                                   src={profile.avatarUrl}
