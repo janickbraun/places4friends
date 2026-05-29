@@ -368,7 +368,7 @@ export default function ProfileView({
       const { data, error } = await supabase
         .from("activity_comments")
         .select(
-          "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name)"
+          "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name, avatar_url)"
         )
         .in("activity_id", activityIds)
         .order("created_at", { ascending: true });
@@ -391,6 +391,12 @@ export default function ProfileView({
           .join("")
           .toUpperCase() || "?";
 
+        let avatarUrl: string | null = null;
+        if (profile?.avatar_url) {
+          const { data: urlData } = supabase.storage.from("avatars").getPublicUrl(profile.avatar_url);
+          avatarUrl = urlData?.publicUrl ?? null;
+        }
+
         const comment: ActivityComment = {
           id: row.id,
           activityId: row.activity_id,
@@ -400,7 +406,7 @@ export default function ProfileView({
           userColor: getUserColorClass(row.user_id),
           content: row.content,
           createdAt: row.created_at,
-          userAvatarUrl: profile?.avatar_url ?? null,
+          userAvatarUrl: avatarUrl,
         };
 
         if (!grouped[comment.activityId]) {
