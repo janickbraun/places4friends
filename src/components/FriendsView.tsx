@@ -52,6 +52,7 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
   const [friendships, setFriendships] = useState<Friendship[]>([]);
   const [friendsList, setFriendsList] = useState<(Profile & { friendshipId: string })[]>([]);
   const [incomingRequests, setIncomingRequests] = useState<(Profile & { friendshipId: string })[]>([]);
+  const [outgoingRequests, setOutgoingRequests] = useState<(Profile & { friendshipId: string })[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [submittingIds, setSubmittingIds] = useState<Record<string, boolean>>({});
   const [activeDropdownFriendId, setActiveDropdownFriendId] = useState<string | null>(null);
@@ -84,6 +85,7 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
 
     const friends: (Profile & { friendshipId: string })[] = [];
     const incoming: (Profile & { friendshipId: string })[] = [];
+    const outgoing: (Profile & { friendshipId: string })[] = [];
     const rawFriendshipsList: Friendship[] = [];
 
     type DBFriendshipResult = {
@@ -124,12 +126,22 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
           avatarUrl: getAvatarPublicUrl(otherUser.avatar_url),
           friendshipId: row.id,
         });
+      } else if (row.status === "pending" && row.sender_id === currentUser.id) {
+        outgoing.push({
+          id: otherUser.id,
+          username: otherUser.username,
+          full_name: otherUser.full_name,
+          avatar_url: otherUser.avatar_url,
+          avatarUrl: getAvatarPublicUrl(otherUser.avatar_url),
+          friendshipId: row.id,
+        });
       }
     });
 
     setFriendships(rawFriendshipsList);
     setFriendsList(friends);
     setIncomingRequests(incoming);
+    setOutgoingRequests(outgoing);
     setIsLoading(false);
   }, [currentUser.id, supabase]);
 
@@ -427,82 +439,150 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
 
             {/* REQUESTS TAB */}
             {activeTab === "requests" && (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
+              <div className="space-y-6">
+                {/* Eingehende Anfragen */}
+                <div className="space-y-3">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Eingehende Freundschaftsanfragen
                   </h3>
-                </div>
+                  {incomingRequests.length > 0 ? (
+                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white p-2 shadow-sm">
+                      {incomingRequests.map((req) => {
+                        const isSubmitting = !!submittingIds[req.id];
 
-                {incomingRequests.length > 0 ? (
-                  <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white p-2 shadow-sm">
-                    {incomingRequests.map((req) => {
-                      const isSubmitting = !!submittingIds[req.id];
+                        return (
+                          <div key={req.id} className="flex items-center justify-between p-3 first:pt-2 last:pb-2">
+                            <Link
+                              href={`/profile/${req.id}`}
+                              className="flex items-center gap-3 hover:opacity-80 active:scale-[0.98] transition-all cursor-pointer group"
+                            >
+                              {/* Avatar */}
+                              <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200 ${
+                                req.avatarUrl 
+                                  ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
+                                  : "bg-slate-200 text-slate-600 border border-slate-300/40"
+                              }`}>
+                                {req.avatarUrl ? (
+                                  <img
+                                    src={req.avatarUrl}
+                                    alt="Profilbild"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  getInitials(req.full_name, req.username)
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900 group-hover:text-brand-green-700 transition-colors">
+                                  {req.full_name ?? "User"}
+                                </h4>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  {req.username ? `@${req.username}` : ""}
+                                </p>
+                              </div>
+                            </Link>
 
-                      return (
-                        <div key={req.id} className="flex items-center justify-between p-3 first:pt-2 last:pb-2">
-                          <div className="flex items-center gap-3">
-                            {/* Avatar */}
-                            <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm ${
-                              req.avatarUrl 
-                                ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
-                                : "bg-slate-200 text-slate-600 border border-slate-300/40"
-                            }`}>
-                              {req.avatarUrl ? (
-                                <img
-                                  src={req.avatarUrl}
-                                  alt="Profilbild"
-                                  className="h-full w-full object-cover"
-                                />
+                            <div className="flex items-center gap-2">
+                              {isSubmitting ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
                               ) : (
-                                getInitials(req.full_name, req.username)
+                                <>
+                                  <button
+                                    onClick={() => acceptRequest(req.friendshipId, req.id)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-green-50 text-brand-green-700 hover:bg-brand-green-100 hover:text-brand-green-800 transition-all cursor-pointer"
+                                    title="Anfrage annehmen"
+                                  >
+                                    <Check className="h-4 w-4 stroke-[2.5]" />
+                                  </button>
+                                  <button
+                                    onClick={() => deleteFriendship(req.friendshipId, req.id)}
+                                    className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer"
+                                    title="Anfrage ablehnen"
+                                  >
+                                    <X className="h-4 w-4 stroke-[2.5]" />
+                                  </button>
+                                </>
                               )}
                             </div>
-                            <div>
-                              <h4 className="text-xs font-bold text-slate-900">
-                                {req.full_name ?? "User"}
-                              </h4>
-                              <p className="text-[10px] text-slate-400 mt-0.5">
-                                {req.username ? `@${req.username}` : ""}
-                              </p>
-                            </div>
                           </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-8 text-center">
+                      <Clock className="h-7 w-7 text-slate-300 mx-auto" />
+                      <p className="text-xs text-slate-500 mt-2 font-medium">Keine eingehenden Anfragen</p>
+                    </div>
+                  )}
+                </div>
 
-                          <div className="flex items-center gap-2">
-                            {isSubmitting ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                            ) : (
-                              <>
-                                <button
-                                  onClick={() => acceptRequest(req.friendshipId, req.id)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-green-50 text-brand-green-700 hover:bg-brand-green-100 hover:text-brand-green-800 transition-all cursor-pointer"
-                                  title="Anfrage annehmen"
-                                >
-                                  <Check className="h-4 w-4 stroke-[2.5]" />
-                                </button>
+                {/* Ausgehende Anfragen */}
+                <div className="space-y-3">
+                  <h3 className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                    Ausgehende Freundschaftsanfragen
+                  </h3>
+                  {outgoingRequests.length > 0 ? (
+                    <div className="divide-y divide-slate-100 rounded-2xl border border-slate-100 bg-white p-2 shadow-sm">
+                      {outgoingRequests.map((req) => {
+                        const isSubmitting = !!submittingIds[req.id];
+
+                        return (
+                          <div key={req.id} className="flex items-center justify-between p-3 first:pt-2 last:pb-2">
+                            <Link
+                              href={`/profile/${req.id}`}
+                              className="flex items-center gap-3 hover:opacity-80 active:scale-[0.98] transition-all cursor-pointer group"
+                            >
+                              {/* Avatar */}
+                              <div className={`flex h-9 w-9 items-center justify-center overflow-hidden rounded-full font-bold text-xs shadow-sm group-hover:scale-105 transition-transform duration-200 ${
+                                req.avatarUrl 
+                                  ? "bg-gradient-to-tr from-brand-green-700 to-brand-green-500 text-white" 
+                                  : "bg-slate-200 text-slate-600 border border-slate-300/40"
+                              }`}>
+                                {req.avatarUrl ? (
+                                  <img
+                                    src={req.avatarUrl}
+                                    alt="Profilbild"
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : (
+                                  getInitials(req.full_name, req.username)
+                                )}
+                              </div>
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900 group-hover:text-brand-green-700 transition-colors">
+                                  {req.full_name ?? "User"}
+                                </h4>
+                                <p className="text-[10px] text-slate-400 mt-0.5">
+                                  {req.username ? `@${req.username}` : ""}
+                                </p>
+                              </div>
+                            </Link>
+
+                            <div className="flex items-center gap-2">
+                              {isSubmitting ? (
+                                <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                              ) : (
                                 <button
                                   onClick={() => deleteFriendship(req.friendshipId, req.id)}
-                                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-600 transition-all cursor-pointer"
-                                  title="Anfrage ablehnen"
+                                  className="flex h-8 px-2.5 items-center justify-center gap-1.5 rounded-lg bg-slate-100 text-slate-500 hover:bg-red-50 hover:text-red-650 transition-all cursor-pointer text-[10px] font-bold"
+                                  title="Anfrage zurückziehen"
                                 >
-                                  <X className="h-4 w-4 stroke-[2.5]" />
+                                  <X className="h-3.5 w-3.5" />
+                                  <span>Zurückziehen</span>
                                 </button>
-                              </>
-                            )}
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-14 text-center">
-                    <Clock className="h-9 w-9 text-slate-355 mx-auto" />
-                    <h4 className="text-xs font-bold text-slate-700 mt-3">Keine ausstehenden Anfragen</h4>
-                    <p className="text-[11px] text-slate-400 max-w-xs mx-auto mt-1 px-4 leading-relaxed">
-                      Sobald dir jemand eine Freundschaftsanfrage schickt, siehst du sie hier.
-                    </p>
-                  </div>
-                )}
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-8 text-center">
+                      <Clock className="h-7 w-7 text-slate-300 mx-auto" />
+                      <p className="text-xs text-slate-500 mt-2 font-medium">Keine ausgehenden Anfragen</p>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </>

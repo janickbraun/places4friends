@@ -137,12 +137,24 @@ export default async function PublicProfilePage({
     .eq("user_id", user.id);
   const initialWishlistedIds = (wishlistData || []).map((w: any) => w.activity_id);
 
+  // Fetch friendship relation
+  const { data: friendshipsData } = await supabase
+    .from("friendships")
+    .select("id, sender_id, receiver_id, status")
+    .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`);
+
+  const initialFriendship = (friendshipsData || []).find(
+    (f: any) => f.sender_id === friendId || f.receiver_id === friendId
+  ) || null;
+
   return (
     <PublicProfileView
       friend={friendData}
       friendsCount={friendsCount ?? 0}
       places={places}
       initialWishlistedIds={initialWishlistedIds}
+      initialFriendship={initialFriendship}
+      currentUserId={user.id}
     />
   );
 }

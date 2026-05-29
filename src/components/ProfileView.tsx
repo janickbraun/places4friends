@@ -798,6 +798,14 @@ export default function ProfileView({
 
           <h2 className="mt-4 text-lg font-bold text-slate-950">{user?.name ?? user?.email ?? 'Profil'}</h2>
           <p className="text-xs font-semibold text-brand-green-700 mt-0.5">{user?.username ? `@${user.username}` : ''}</p>
+          <Link
+            href="/profile/friends"
+            className="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold text-slate-500 hover:text-brand-green-800 transition-colors cursor-pointer"
+          >
+            <span>
+              {friendsCount} {friendsCount === 1 ? "Freund" : "Freunde"}
+            </span>
+          </Link>
         </div>
 
         {/* Tabs */}
