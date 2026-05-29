@@ -157,6 +157,7 @@ export default function ProfileView({
   const isDraggingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
   const lastDragPosRef = useRef<{ x: number; y: number } | null>(null);
+  const cropCenterRef = useRef<{ x: number; y: number } | null>(null);
 
   const cropPreviewSize = 220;
   const cropExportSize = 512;
@@ -196,6 +197,7 @@ export default function ProfileView({
   useEffect(() => {
     if (!cropImageSrc) {
       cropImageRef.current = null;
+      cropCenterRef.current = null;
       setCropCenter(null);
       return;
     }
@@ -203,7 +205,9 @@ export default function ProfileView({
     const img = new Image();
     img.onload = () => {
       cropImageRef.current = img;
-      setCropCenter({ x: img.naturalWidth / 2, y: img.naturalHeight / 2 });
+      const center = { x: img.naturalWidth / 2, y: img.naturalHeight / 2 };
+      cropCenterRef.current = center;
+      setCropCenter(center);
       setCropScale(1);
     };
     img.src = cropImageSrc;
@@ -236,6 +240,7 @@ export default function ProfileView({
   const resetCropState = () => {
     setIsCropOpen(false);
     setCropImageSrc(null);
+    cropCenterRef.current = null;
     setCropCenter(null);
     setCropScale(1);
   };
@@ -244,12 +249,13 @@ export default function ProfileView({
 
   const getCropSettings = () => {
     const img = cropImageRef.current;
-    if (!img || !cropCenter) return null;
+    const center = cropCenterRef.current;
+    if (!img || !center) return null;
     const baseSize = Math.min(img.naturalWidth, img.naturalHeight);
     const size = baseSize / cropScale;
     const half = size / 2;
-    const centerX = clamp(cropCenter.x, half, img.naturalWidth - half);
-    const centerY = clamp(cropCenter.y, half, img.naturalHeight - half);
+    const centerX = clamp(center.x, half, img.naturalWidth - half);
+    const centerY = clamp(center.y, half, img.naturalHeight - half);
     return { img, size, half, centerX, centerY };
   };
 
@@ -384,7 +390,8 @@ export default function ProfileView({
   };
 
   const handleCropPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || activePointerIdRef.current !== event.pointerId || !cropCenter) return;
+    const center = cropCenterRef.current;
+    if (!isDraggingRef.current || activePointerIdRef.current !== event.pointerId || !center) return;
     event.preventDefault();
     const last = lastDragPosRef.current;
     if (!last) return;
@@ -397,10 +404,11 @@ export default function ProfileView({
 
     const delta = settings.size / cropPreviewSize;
     const next = {
-      x: cropCenter.x - dx * delta,
-      y: cropCenter.y - dy * delta,
+      x: center.x - dx * delta,
+      y: center.y - dy * delta,
     };
-    setCropCenter(next);
+    cropCenterRef.current = next;
+    drawCropPreview();
   };
 
   const handleCropPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
@@ -412,6 +420,9 @@ export default function ProfileView({
     }
     isDraggingRef.current = false;
     lastDragPosRef.current = null;
+    if (cropCenterRef.current) {
+      setCropCenter(cropCenterRef.current);
+    }
   };
 
   useEffect(() => {

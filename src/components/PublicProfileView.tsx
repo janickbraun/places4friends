@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Bookmark, MapPin, X, Loader2, UserPlus, UserCheck, Clock, UserMinus, MessageCircle, MoreVertical, Pencil, Trash2, Sparkles } from "lucide-react";
 import ActivityCard from "./ActivityCard";
 import { createClient } from "@/lib/supabase/client";
@@ -63,6 +64,7 @@ export default function PublicProfileView({
   currentUserId: string;
   isInvite?: boolean;
 }) {
+  const router = useRouter();
   const [wishlistIds, setWishlistIds] = useState<string[]>(initialWishlistedIds);
   const [avatarPublicUrl, setAvatarPublicUrl] = useState<string | null>(null);
   const [isFriendsModalOpen, setIsFriendsModalOpen] = useState(false);
@@ -223,6 +225,7 @@ export default function PublicProfileView({
       }
     } finally {
       setIsSubmittingFriendship(false);
+      router.refresh();
     }
   };
 
@@ -540,13 +543,16 @@ export default function PublicProfileView({
     <div className="flex flex-col min-h-screen bg-slate-50/50 pb-20 font-sans">
       {/* Header */}
       <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b border-slate-100 bg-white px-4">
-        <Link
-          href="/profile/friends"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all"
+        <button
+          onClick={() => {
+            router.push("/profile/friends");
+            router.refresh();
+          }}
+          className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-50 active:scale-95 transition-all cursor-pointer"
           aria-label="Zurück"
         >
           <ArrowLeft className="h-5 w-5" />
-        </Link>
+        </button>
         <h1 className="text-lg font-bold text-slate-900">Profil</h1>
         <div className="w-8" /> {/* Spacer to center the title */}
       </header>

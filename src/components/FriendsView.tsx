@@ -174,11 +174,40 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
   }, [currentUser.id, supabase]);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchFriendships();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [fetchFriendships]);
+    let active = true;
+    let channel: any = null;
+
+    async function initSubscription() {
+      await fetchFriendships();
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!active || !user) return;
+
+      channel = supabase
+        .channel("friends-realtime")
+        .on(
+          "postgres_changes",
+          {
+            event: "*",
+            schema: "public",
+            table: "friendships",
+          },
+          () => {
+            fetchFriendships();
+          }
+        )
+        .subscribe();
+    }
+
+    initSubscription();
+
+    return () => {
+      active = false;
+      if (channel) {
+        supabase.removeChannel(channel);
+      }
+    };
+  }, [fetchFriendships, supabase]);
 
   // Handle Search Query Submission
   const handleSearch = async (e?: React.FormEvent) => {

@@ -17,6 +17,7 @@ import {
   Layers,
   Locate,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 interface PlaceResult {
@@ -67,6 +68,7 @@ const MAP_STYLES = [
 type FormStep = "map" | "form";
 
 export default function RecommendView() {
+  const router = useRouter();
   // Map state
   const mapRef = useRef<any>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -357,8 +359,25 @@ export default function RecommendView() {
       if (!response.ok) throw new Error(data?.error ?? "Speichern fehlgeschlagen.");
 
       setFeedback({ type: "success", message: "Empfehlung gespeichert." });
+      
+      const newId = data?.id;
+      const lat = payload.latitude;
+      const lng = payload.longitude;
+      
       resetAll();
-      setTimeout(() => setFeedback(null), 3000);
+      
+      setTimeout(() => {
+        setFeedback(null);
+        if (newId) {
+          if (lat !== null && lng !== null) {
+            router.push(`/?placeId=${newId}&lat=${lat}&lng=${lng}`);
+          } else {
+            router.push(`/?placeId=${newId}`);
+          }
+        } else {
+          router.push("/");
+        }
+      }, 1500);
     } catch (error) {
       setFeedback({
         type: "error",

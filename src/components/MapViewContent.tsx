@@ -298,6 +298,15 @@ export default function MapViewContent() {
               zoom: 15,
             });
           }
+        } else if (placeIdParam) {
+          const matched = loadedPlaces.find((p) => p.id === placeIdParam);
+          if (matched) {
+            setViewState({
+              latitude: matched.latitude,
+              longitude: matched.longitude,
+              zoom: 15,
+            });
+          }
         } else if (loadedPlaces.length > 0) {
           setViewState({
             latitude: loadedPlaces[0].latitude,
@@ -338,6 +347,16 @@ export default function MapViewContent() {
           ...prev,
           latitude: lat,
           longitude: lng,
+          zoom: 15,
+        }));
+      }
+    } else if (placeIdParam) {
+      const matched = places.find((p) => p.id === placeIdParam);
+      if (matched) {
+        setViewState((prev) => ({
+          ...prev,
+          latitude: matched.latitude,
+          longitude: matched.longitude,
           zoom: 15,
         }));
       }
