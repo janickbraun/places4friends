@@ -24,8 +24,13 @@ function normalizeCategories(input: unknown): string[] {
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: "Ungueltige Anfrage." }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -68,7 +73,7 @@ export async function PATCH(
       is_superlike: payload.isSuperLike,
       categories,
     })
-    .eq("id", params.id)
+    .eq("id", id)
     .eq("user_id", user.id)
     .select("id")
     .maybeSingle();
@@ -95,8 +100,13 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
+  if (!id) {
+    return NextResponse.json({ error: "Ungueltige Anfrage." }, { status: 400 });
+  }
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -109,7 +119,7 @@ export async function DELETE(
   const { data, error } = await supabase
     .from("activities")
     .delete()
-    .eq("id", params.id)
+    .eq("id", id)
     .eq("user_id", user.id)
     .select("id")
     .maybeSingle();

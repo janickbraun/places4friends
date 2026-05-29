@@ -27,6 +27,16 @@ interface Place {
   categories: string[];
 }
 
+interface ActivityComment {
+  id: string;
+  userId: string;
+  userName: string;
+  userInitials: string;
+  userColor: string;
+  content: string;
+  createdAt: string;
+}
+
 const COLORS = [
   "bg-emerald-600",
   "bg-rose-500",
@@ -72,6 +82,15 @@ export default function MapViewContent() {
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
   const [currentStyle, setCurrentStyle] = useState("mapbox://styles/mapbox/streets-v12");
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [comments, setComments] = useState<ActivityComment[]>([]);
+  const [commentInput, setCommentInput] = useState("");
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [isCommentsLoading, setIsCommentsLoading] = useState(false);
+  const [isCommentSaving, setIsCommentSaving] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editingCommentInput, setEditingCommentInput] = useState("");
+  const [isCommentUpdating, setIsCommentUpdating] = useState(false);
+  const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -207,9 +226,162 @@ export default function MapViewContent() {
     loadMapData();
   }, []);
 
+  const fetchComments = async (activityId: string, isActive?: () => boolean) => {
+    setIsCommentsLoading(true);
+    setCommentError(null);
+
+    const { data, error } = await supabase
+      .from("activity_comments")
+      .select(
+        "id, content, created_at, user_id, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name)"
+      )
+      .eq("activity_id", activityId)
+      .order("created_at", { ascending: true });
+
+    if (isActive && !isActive()) return;
+
+    if (error) {
+      setComments([]);
+      setCommentError("Kommentare konnten nicht geladen werden.");
+    } else {
+      const loadedComments = (data || []).map((row: any) => {
+        const profile = row.profiles;
+        const name = profile?.full_name ?? profile?.username ?? "Nutzer";
+        const initials = name
+          .split(" ")
+          .map((n: string) => n[0])
+          .slice(0, 2)
+          .join("")
+          .toUpperCase() || "?";
+        return {
+          id: row.id,
+          userId: row.user_id,
+          userName: name,
+          userInitials: initials,
+          userColor: getUserColorClass(row.user_id),
+          content: row.content,
+          createdAt: row.created_at,
+        } as ActivityComment;
+      });
+      setComments(loadedComments);
+    }
+
+    setIsCommentsLoading(false);
+  };
+
+  useEffect(() => {
+    if (!selectedPlace || !user) {
+      setComments([]);
+      setCommentError(null);
+      setCommentInput("");
+      setEditingCommentId(null);
+      setEditingCommentInput("");
+      return;
+    }
+
+    let isActive = true;
+
+    fetchComments(selectedPlace.id, () => isActive).catch((error) => {
+      if (!isActive) return;
+      console.error("Error loading comments:", error);
+      setComments([]);
+      setCommentError("Kommentare konnten nicht geladen werden.");
+      setIsCommentsLoading(false);
+    });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedPlace?.id, user?.id]);
+
   const handleSelectUser = (userId: string | null) => {
     setSelectedUser(userId);
     setSelectedPlace(null);
+  };
+
+  const handleAddComment = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!user || !selectedPlace) return;
+    const trimmed = commentInput.trim();
+    if (!trimmed) {
+      setCommentError("Kommentar fehlt.");
+      return;
+    }
+
+    setIsCommentSaving(true);
+    setCommentError(null);
+
+    const { error } = await supabase.from("activity_comments").insert({
+      activity_id: selectedPlace.id,
+      user_id: user.id,
+      content: trimmed,
+    });
+
+    if (error) {
+      setCommentError("Kommentar konnte nicht gespeichert werden.");
+    } else {
+      setCommentInput("");
+      await fetchComments(selectedPlace.id);
+    }
+
+    setIsCommentSaving(false);
+  };
+
+  const startEditComment = (comment: ActivityComment) => {
+    setEditingCommentId(comment.id);
+    setEditingCommentInput(comment.content);
+  };
+
+  const cancelEditComment = () => {
+    setEditingCommentId(null);
+    setEditingCommentInput("");
+  };
+
+  const handleUpdateComment = async (commentId: string) => {
+    if (!selectedPlace) return;
+    const trimmed = editingCommentInput.trim();
+    if (!trimmed) {
+      setCommentError("Kommentar fehlt.");
+      return;
+    }
+
+    setIsCommentUpdating(true);
+    setCommentError(null);
+
+    const { error } = await supabase
+      .from("activity_comments")
+      .update({ content: trimmed })
+      .eq("id", commentId);
+
+    if (error) {
+      setCommentError("Kommentar konnte nicht gespeichert werden.");
+    } else {
+      cancelEditComment();
+      await fetchComments(selectedPlace.id);
+    }
+
+    setIsCommentUpdating(false);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!selectedPlace) return;
+    if (!globalThis.confirm("Kommentar wirklich loeschen?")) return;
+
+    setCommentDeletingId(commentId);
+    setCommentError(null);
+
+    const { error } = await supabase
+      .from("activity_comments")
+      .delete()
+      .eq("id", commentId);
+
+    if (error) {
+      setCommentError("Kommentar konnte nicht geloescht werden.");
+    } else {
+      await fetchComments(selectedPlace.id);
+    }
+
+    setCommentDeletingId(null);
   };
 
   const filteredPlaces = selectedUser
@@ -361,6 +533,119 @@ export default function MapViewContent() {
                     ))}
                   </div>
                 )}
+
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <div className="flex items-center justify-between text-[10px] text-slate-400">
+                    <span className="font-semibold uppercase tracking-wide">Kommentare</span>
+                    <span>{comments.length}</span>
+                  </div>
+
+                  {commentError && (
+                    <div className="mt-2 rounded-lg border border-red-100 bg-red-50 px-2 py-1 text-[10px] text-red-700">
+                      {commentError}
+                    </div>
+                  )}
+
+                  {isCommentsLoading ? (
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Kommentare werden geladen...
+                    </div>
+                  ) : comments.length === 0 ? (
+                    <div className="mt-2 text-[10px] text-slate-500">
+                      Noch keine Kommentare.
+                    </div>
+                  ) : (
+                    <div className="mt-2 space-y-2">
+                      {comments.map((comment) => (
+                        <div key={comment.id} className="flex gap-2">
+                          <div className={`flex h-5 w-5 items-center justify-center rounded-full text-[8px] font-bold text-white ${comment.userColor}`}>
+                            {comment.userInitials}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] font-semibold text-slate-700">
+                                {comment.userName}
+                              </span>
+                              <span className="text-[9px] text-slate-400">
+                                {formatCommentTimestamp(comment.createdAt)}
+                              </span>
+                              {user?.id === comment.userId && editingCommentId !== comment.id && (
+                                <div className="ml-auto flex items-center gap-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => startEditComment(comment)}
+                                    className="text-[9px] font-semibold text-slate-500 hover:text-slate-700"
+                                  >
+                                    Bearbeiten
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteComment(comment.id)}
+                                    disabled={commentDeletingId === comment.id}
+                                    className="text-[9px] font-semibold text-red-500 hover:text-red-600 disabled:opacity-60"
+                                  >
+                                    Loeschen
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                            {editingCommentId === comment.id ? (
+                              <div className="mt-1 flex gap-2">
+                                <input
+                                  value={editingCommentInput}
+                                  onChange={(e) => setEditingCommentInput(e.target.value)}
+                                  className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] text-slate-700 outline-none focus:border-brand-green-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => handleUpdateComment(comment.id)}
+                                  disabled={isCommentUpdating || editingCommentInput.trim().length === 0}
+                                  className="rounded-lg bg-brand-green-700 px-2 py-1 text-[9px] font-semibold text-white disabled:opacity-60"
+                                >
+                                  {isCommentUpdating ? "..." : "OK"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={cancelEditComment}
+                                  className="rounded-lg border border-slate-200 px-2 py-1 text-[9px] font-semibold text-slate-500"
+                                >
+                                  X
+                                </button>
+                              </div>
+                            ) : (
+                              <p className="text-[11px] text-slate-600 leading-snug">
+                                {comment.content}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {user ? (
+                    <form onSubmit={handleAddComment} className="mt-3 flex gap-2">
+                      <input
+                        value={commentInput}
+                        onChange={(e) => setCommentInput(e.target.value)}
+                        placeholder="Kommentar schreiben"
+                        className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-brand-green-500"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isCommentSaving || commentInput.trim().length === 0}
+                        className="rounded-lg bg-brand-green-700 px-3 py-1.5 text-[10px] font-semibold text-white transition-all disabled:opacity-60"
+                      >
+                        {isCommentSaving ? "..." : "Senden"}
+                      </button>
+                    </form>
+                  ) : (
+                    <div className="mt-3 text-[10px] text-slate-500">
+                      Melde dich an, um zu kommentieren.
+                    </div>
+                  )}
+                </div>
               </div>
             </Popup>
           )}
@@ -428,5 +713,34 @@ export default function MapViewContent() {
 
     </div>
   );
+}
+
+function formatCommentTimestamp(dateStr: string) {
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return "";
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMins = Math.floor(diffMs / (1000 * 60));
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (diffMins < 60) {
+    return `vor ${Math.max(1, diffMins)} Min.`;
+  }
+  if (diffHours < 24) {
+    return `vor ${diffHours} Std.`;
+  }
+  if (diffDays === 1) {
+    return "gestern";
+  }
+  if (diffDays < 7) {
+    return `vor ${diffDays} Tagen`;
+  }
+
+  return date.toLocaleDateString("de-DE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 }
 
