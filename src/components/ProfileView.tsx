@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Settings, Sparkles, LogOut, UserPlus, MapPin, Pencil, Trash2, X, Check, Bookmark } from "lucide-react";
+import { Settings, Sparkles, LogOut, UserPlus, MapPin, Pencil, Trash2, X, Check, Bookmark, Loader2 } from "lucide-react";
 import { signout } from "@/app/login/actions";
 import { createClient } from "@/lib/supabase/client";
 import ActivityCard from "./ActivityCard";
@@ -12,6 +12,7 @@ interface User {
   email: string;
   name?: string | null;
   username?: string | null;
+  avatarUrl?: string | null;
 }
 
 interface PlaceItem {
@@ -83,6 +84,14 @@ export default function ProfileView({
   const [items, setItems] = useState<PlaceItem[]>(places);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(wishlist);
   const [activeTab, setActiveTab] = useState<"recommendations" | "wishlist">("recommendations");
+  const [avatarPath, setAvatarPath] = useState<string | null>(user?.avatarUrl ?? null);
+  const [avatarPublicUrl, setAvatarPublicUrl] = useState<string | null>(null);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const [isCropOpen, setIsCropOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropScale, setCropScale] = useState(1);
+  const [cropCenter, setCropCenter] = useState<{ x: number; y: number } | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editReview, setEditReview] = useState("");
@@ -99,6 +108,15 @@ export default function ProfileView({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement | null>(null);
+  const cropCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const cropImageRef = useRef<HTMLImageElement | null>(null);
+  const isDraggingRef = useRef(false);
+  const lastDragPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const cropPreviewSize = 220;
+  const cropExportSize = 512;
+  const cropScaleLimits = useMemo(() => ({ min: 1, max: 3 }), []);
 
   useEffect(() => {
     setItems(places);
@@ -107,6 +125,40 @@ export default function ProfileView({
   useEffect(() => {
     setWishlistItems(wishlist);
   }, [wishlist]);
+
+  useEffect(() => {
+    setAvatarPath(user?.avatarUrl ?? null);
+  }, [user?.avatarUrl]);
+
+  useEffect(() => {
+    if (!avatarPath) {
+      setAvatarPublicUrl(null);
+      return;
+    }
+    const { data } = supabase.storage.from("avatars").getPublicUrl(avatarPath);
+    setAvatarPublicUrl(`${data.publicUrl}?t=${Date.now()}`);
+  }, [avatarPath]);
+
+  useEffect(() => {
+    if (!cropImageSrc) {
+      cropImageRef.current = null;
+      setCropCenter(null);
+      return;
+    }
+
+    const img = new Image();
+    img.onload = () => {
+      cropImageRef.current = img;
+      setCropCenter({ x: img.naturalWidth / 2, y: img.naturalHeight / 2 });
+      setCropScale(1);
+    };
+    img.src = cropImageSrc;
+  }, [cropImageSrc]);
+
+  useEffect(() => {
+    if (!isCropOpen || !cropImageRef.current || !cropCenter) return;
+    drawCropPreview();
+  }, [cropCenter, cropScale, isCropOpen]);
 
   const handleRemoveFromWishlist = async (activityId: string) => {
     setWishlistItems((prev) => prev.filter((item) => item.activityId !== activityId));
@@ -121,6 +173,181 @@ export default function ProfileView({
         setWishlistItems((prev) => [...prev, itemToRestore].sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
       }
     }
+  };
+
+  const triggerAvatarPicker = () => {
+    avatarInputRef.current?.click();
+  };
+
+  const resetCropState = () => {
+    setIsCropOpen(false);
+    setCropImageSrc(null);
+    setCropCenter(null);
+    setCropScale(1);
+  };
+
+  const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+
+  const getCropSettings = () => {
+    const img = cropImageRef.current;
+    if (!img || !cropCenter) return null;
+    const baseSize = Math.min(img.naturalWidth, img.naturalHeight);
+    const size = baseSize / cropScale;
+    const half = size / 2;
+    const centerX = clamp(cropCenter.x, half, img.naturalWidth - half);
+    const centerY = clamp(cropCenter.y, half, img.naturalHeight - half);
+    return { img, size, half, centerX, centerY };
+  };
+
+  const drawCropPreview = () => {
+    const canvas = cropCanvasRef.current;
+    const settings = getCropSettings();
+    if (!canvas || !settings) return;
+
+    const { img, size, centerX, centerY } = settings;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    canvas.width = cropPreviewSize;
+    canvas.height = cropPreviewSize;
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    const sx = centerX - size / 2;
+    const sy = centerY - size / 2;
+    ctx.drawImage(img, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+  };
+
+  const exportCroppedBlob = async () => {
+    const settings = getCropSettings();
+    if (!settings) return null;
+    const { img, size, centerX, centerY } = settings;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = cropExportSize;
+    canvas.height = cropExportSize;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return null;
+
+    const sx = centerX - size / 2;
+    const sy = centerY - size / 2;
+    ctx.drawImage(img, sx, sy, size, size, 0, 0, canvas.width, canvas.height);
+
+    return new Promise<Blob | null>((resolve) => {
+      canvas.toBlob((blob) => resolve(blob), "image/jpeg", 0.92);
+    });
+  };
+
+  const handleAvatarChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    setAvatarError(null);
+    if (!user) {
+      setAvatarError("Profil nicht geladen.");
+      return;
+    }
+
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setAvatarError("Bitte waehle eine Bilddatei.");
+      return;
+    }
+
+    const maxBytes = 5 * 1024 * 1024;
+    if (file.size > maxBytes) {
+      setAvatarError("Bild ist zu gross (max. 5 MB).");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) {
+        setAvatarError("Bild konnte nicht geladen werden.");
+        return;
+      }
+      setCropImageSrc(result);
+      setIsCropOpen(true);
+    };
+    reader.onerror = () => setAvatarError("Bild konnte nicht geladen werden.");
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropCancel = () => {
+    resetCropState();
+  };
+
+  const handleCropConfirm = async () => {
+    if (!user) {
+      setAvatarError("Profil nicht geladen.");
+      return;
+    }
+
+    setIsUploadingAvatar(true);
+    try {
+      const blob = await exportCroppedBlob();
+      if (!blob) {
+        throw new Error("CROP_FAILED");
+      }
+
+      const filePath = `${user.id}/avatar.jpg`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, blob, {
+          upsert: true,
+          cacheControl: "3600",
+          contentType: "image/jpeg",
+        });
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({ avatar_url: filePath })
+        .eq("id", user.id);
+
+      if (profileError) {
+        throw profileError;
+      }
+
+      setAvatarPath(filePath);
+      resetCropState();
+    } catch (error) {
+      setAvatarError("Profilbild konnte nicht gespeichert werden.");
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
+  const handleCropPointerDown = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    isDraggingRef.current = true;
+    lastDragPosRef.current = { x: event.clientX, y: event.clientY };
+  };
+
+  const handleCropPointerMove = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (!isDraggingRef.current || !cropCenter) return;
+    const last = lastDragPosRef.current;
+    if (!last) return;
+    const settings = getCropSettings();
+    if (!settings) return;
+
+    const dx = event.clientX - last.x;
+    const dy = event.clientY - last.y;
+    lastDragPosRef.current = { x: event.clientX, y: event.clientY };
+
+    const delta = settings.size / cropPreviewSize;
+    const next = {
+      x: cropCenter.x - dx * delta,
+      y: cropCenter.y - dy * delta,
+    };
+    setCropCenter(next);
+  };
+
+  const handleCropPointerUp = () => {
+    isDraggingRef.current = false;
+    lastDragPosRef.current = null;
   };
 
   useEffect(() => {
@@ -443,11 +670,50 @@ export default function ProfileView({
           {/* Avatar Placeholder */}
           <div className="relative">
             <div className="flex h-22 w-22 items-center justify-center rounded-full bg-gradient-to-tr from-brand-green-800 to-brand-green-500 p-0.5 shadow-md">
-                  <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-800 font-bold text-2xl">
-                    {user?.name ? user.name.split(' ').map(n => n[0]).slice(0,2).join('') : (user?.username ? user.username.slice(0,2).toUpperCase() : '')}
-                  </div>
+              {avatarPublicUrl ? (
+                <img
+                  src={avatarPublicUrl}
+                  alt="Profilbild"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-800 font-bold text-2xl">
+                  {user?.name
+                    ? user.name.split(" ").map((n) => n[0]).slice(0, 2).join("")
+                    : user?.username
+                    ? user.username.slice(0, 2).toUpperCase()
+                    : ""}
+                </div>
+              )}
             </div>
+            <button
+              type="button"
+              onClick={triggerAvatarPicker}
+              disabled={isUploadingAvatar}
+              className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-white bg-slate-900 text-white shadow-md transition-all hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-70"
+              aria-label="Profilbild aendern"
+              title="Profilbild aendern"
+            >
+              {isUploadingAvatar ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Pencil className="h-3.5 w-3.5" />
+              )}
+            </button>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleAvatarChange}
+            />
           </div>
+
+          {avatarError && (
+            <p className="mt-2 text-[11px] font-semibold text-rose-600">
+              {avatarError}
+            </p>
+          )}
 
           <h2 className="mt-4 text-lg font-bold text-slate-950">{user?.name ?? user?.email ?? 'Profil'}</h2>
           <p className="text-xs font-semibold text-brand-green-700 mt-0.5">{user?.username ? `@${user.username}` : ''}</p>
@@ -780,6 +1046,72 @@ export default function ProfileView({
             </div>
           )}
       </div>
+
+      {isCropOpen && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 px-4 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-2xl border border-slate-100 bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-slate-900">Profilbild zuschneiden</h3>
+              <button
+                type="button"
+                onClick={handleCropCancel}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                aria-label="Crop schliessen"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <p className="mt-2 text-[11px] font-medium text-slate-500">
+              Ziehe das Bild, um den Ausschnitt zu verschieben. Nutze den Regler zum Zoomen.
+            </p>
+
+            <div className="mt-4 flex justify-center">
+              <canvas
+                ref={cropCanvasRef}
+                width={cropPreviewSize}
+                height={cropPreviewSize}
+                className="rounded-full border border-slate-200 bg-slate-50"
+                onPointerDown={handleCropPointerDown}
+                onPointerMove={handleCropPointerMove}
+                onPointerUp={handleCropPointerUp}
+                onPointerLeave={handleCropPointerUp}
+              />
+            </div>
+
+            <div className="mt-4">
+              <input
+                type="range"
+                min={cropScaleLimits.min}
+                max={cropScaleLimits.max}
+                step={0.05}
+                value={cropScale}
+                onChange={(event) => setCropScale(Number(event.target.value))}
+                className="w-full"
+                aria-label="Zoom"
+              />
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCropCancel}
+                className="rounded-lg border border-slate-200 px-3 py-2 text-[11px] font-semibold text-slate-500"
+              >
+                Abbrechen
+              </button>
+              <button
+                type="button"
+                onClick={handleCropConfirm}
+                disabled={isUploadingAvatar}
+                className="rounded-lg bg-brand-green-700 px-3 py-2 text-[11px] font-bold text-white shadow-sm disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {isUploadingAvatar ? "Speichert..." : "Speichern"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
     </div>
   );

@@ -79,7 +79,7 @@ export default async function PublicProfilePage({
   // Fetch the friend's profile details
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("id, username, full_name")
+    .select("id, username, full_name, avatar_url")
     .eq("id", friendId)
     .single();
 
@@ -126,6 +126,7 @@ export default async function PublicProfilePage({
     username: profile.username,
     initials,
     color: getUserColorClass(profile.id),
+    avatarUrl: profile.avatar_url ?? null,
   };
 
   // Fetch authenticated user's wishlist

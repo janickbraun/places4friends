@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Bookmark, MapPin } from "lucide-react";
 import ActivityCard from "./ActivityCard";
+import { createClient } from "@/lib/supabase/client";
 
 interface User {
   id: string;
@@ -11,6 +12,7 @@ interface User {
   username: string | null;
   initials: string;
   color: string;
+  avatarUrl?: string | null;
 }
 
 interface PlaceItem {
@@ -36,10 +38,21 @@ export default function PublicProfileView({
   initialWishlistedIds?: string[];
 }) {
   const [wishlistIds, setWishlistIds] = useState<string[]>(initialWishlistedIds);
+  const [avatarPublicUrl, setAvatarPublicUrl] = useState<string | null>(null);
+  const supabase = createClient();
 
   useEffect(() => {
     setWishlistIds(initialWishlistedIds);
   }, [initialWishlistedIds]);
+
+  useEffect(() => {
+    if (!friend.avatarUrl) {
+      setAvatarPublicUrl(null);
+      return;
+    }
+    const { data } = supabase.storage.from("avatars").getPublicUrl(friend.avatarUrl);
+    setAvatarPublicUrl(`${data.publicUrl}?t=${Date.now()}`);
+  }, [friend.avatarUrl]);
 
   const toggleWishlist = async (activityId: string) => {
     const isSaved = wishlistIds.includes(activityId);
@@ -89,9 +102,17 @@ export default function PublicProfileView({
           {/* Avatar */}
           <div className="relative">
             <div className={`flex h-22 w-22 items-center justify-center rounded-full p-0.5 shadow-md ${friend.color}`}>
-              <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-800 font-bold text-2xl">
-                {friend.initials}
-              </div>
+              {avatarPublicUrl ? (
+                <img
+                  src={avatarPublicUrl}
+                  alt="Profilbild"
+                  className="h-full w-full rounded-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center rounded-full bg-white text-slate-800 font-bold text-2xl">
+                  {friend.initials}
+                </div>
+              )}
             </div>
           </div>
 

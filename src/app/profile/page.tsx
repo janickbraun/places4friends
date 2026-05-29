@@ -22,7 +22,7 @@ export default async function ProfilePage() {
   // Fetch profile data
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username, full_name")
+    .select("username, full_name, avatar_url")
     .eq("id", user.id)
     .single();
 
@@ -120,6 +120,7 @@ export default async function ProfilePage() {
     email: user.email ?? "",
     name: profile?.full_name ?? user.user_metadata?.full_name ?? null,
     username: profile?.username ?? user.user_metadata?.username ?? null,
+    avatarUrl: profile?.avatar_url ?? null,
   };
 
   return <ProfileView user={userData} friendsCount={friendsCount ?? 0} places={places} wishlist={wishlist} />;
