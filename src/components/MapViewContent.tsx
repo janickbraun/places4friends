@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Map, { Marker, Popup } from "react-map-gl/mapbox";
 import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus, MessageCircle, X } from "lucide-react";
 import Link from "next/link";
@@ -40,6 +40,19 @@ interface ActivityComment {
   userAvatarUrl?: string | null;
   content: string;
   createdAt: string;
+}
+
+interface SearchSuggestion {
+  id: string;
+  name: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  isRecommendation: boolean;
+  isMustSee?: boolean;
+  userName?: string;
+  placeData?: Place;
+  type?: string;
 }
 
 const COLORS = [
@@ -104,6 +117,15 @@ export default function MapViewContent() {
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [isCommentUpdating, setIsCommentUpdating] = useState(false);
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
+
+  const mapRef = useRef<any>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Search bar states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -308,6 +330,146 @@ export default function MapViewContent() {
       }
     }
   }, [searchParams, places]);
+
+  // Search effect to search places (both local recommendations and global geocoding API)
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSuggestions([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const queryLower = searchQuery.toLowerCase();
+    const localMatches = places
+      .filter(
+        (p) =>
+          p.name.toLowerCase().includes(queryLower) ||
+          p.review.toLowerCase().includes(queryLower) ||
+          (p.categories && p.categories.some((c) => c.toLowerCase().includes(queryLower)))
+      )
+      .map((p) => ({
+        id: `local-${p.id}`,
+        name: p.name,
+        address: p.review ? (p.review.length > 60 ? p.review.slice(0, 60) + "..." : p.review) : "Empfohlener Ort",
+        latitude: p.latitude,
+        longitude: p.longitude,
+        isRecommendation: true,
+        isMustSee: p.isMustSee,
+        userName: p.userName,
+        placeData: p,
+        type: "poi",
+      }));
+
+    setIsSearching(true);
+
+    const delayDebounce = setTimeout(async () => {
+      try {
+        let url = `/api/places/search?query=${encodeURIComponent(searchQuery)}`;
+        if (viewState.latitude && viewState.longitude) {
+          url += `&lat=${viewState.latitude}&lng=${viewState.longitude}`;
+        }
+
+        const res = await fetch(url);
+        if (res.ok) {
+          const data = await res.json();
+          const globalResults = (data.results || []).map((item: any) => ({
+            id: `global-${item.id}`,
+            name: item.name,
+            address: item.address || "",
+            latitude: item.latitude,
+            longitude: item.longitude,
+            isRecommendation: false,
+            type: item.type,
+          }));
+
+          const combined = [...localMatches, ...globalResults];
+          setSuggestions(combined);
+        } else {
+          setSuggestions(localMatches);
+        }
+      } catch (err) {
+        console.error("Error fetching search suggestions:", err);
+        setSuggestions(localMatches);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounce);
+  }, [searchQuery, places, viewState.latitude, viewState.longitude]);
+
+  // Click outside search bar to close suggestions
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
+  const getZoomLevelForType = (type?: string): number => {
+    switch (type) {
+      case "country":
+        return 4.5;
+      case "region":
+        return 7.5;
+      case "city":
+        return 11.5;
+      case "neighborhood":
+        return 14.5;
+      case "address":
+        return 16;
+      case "poi":
+      default:
+        return 17;
+    }
+  };
+
+  const handleSelectSuggestion = (suggestion: SearchSuggestion) => {
+    if (suggestion.latitude && suggestion.longitude) {
+      const zoom = getZoomLevelForType(suggestion.type);
+
+      mapRef.current?.flyTo({
+        center: [suggestion.longitude, suggestion.latitude],
+        zoom: zoom,
+        duration: 1500,
+      });
+
+      setViewState((prev) => ({
+        ...prev,
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude,
+        zoom: zoom,
+      }));
+
+      if (suggestion.isRecommendation && suggestion.placeData) {
+        setSelectedPlace(suggestion.placeData);
+      } else {
+        setSelectedPlace(null);
+      }
+
+      setSearchQuery(suggestion.name);
+      setShowSuggestions(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (suggestions.length > 0) {
+        handleSelectSuggestion(suggestions[0]);
+      }
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
+    setSuggestions([]);
+    setShowSuggestions(false);
+  };
 
   const toggleWishlist = async (activityId: string) => {
     if (!user) return;
@@ -542,10 +704,96 @@ export default function MapViewContent() {
         </div>
       )}
 
+      {/* Floating Search Bar */}
+      {!isLoading && (
+        <div ref={searchContainerRef} className="absolute top-4 left-4 right-4 z-20">
+          <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] px-4 py-3 transition-all duration-300 focus-within:ring-2 focus-within:ring-brand-green-700/10">
+            <Search className="h-4 w-4 text-slate-400 mr-3.5 flex-shrink-0" />
+            <input
+              type="text"
+              placeholder="Ort suchen..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSuggestions(true);
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onKeyDown={handleKeyDown}
+              className="w-full bg-transparent text-sm text-slate-800 focus:outline-none placeholder-slate-400 font-medium cursor-pointer"
+            />
+            {searchQuery && (
+              <button
+                onClick={clearSearch}
+                className="text-slate-400 hover:text-slate-600 transition-colors p-0.5 rounded-full hover:bg-slate-100 flex-shrink-0 cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          {/* Suggestions Dropdown */}
+          {showSuggestions && (suggestions.length > 0 || isSearching) && (
+            <div className="absolute left-0 right-0 mt-2 bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_12px_40px_rgba(0,0,0,0.08)] max-h-72 overflow-y-auto z-30 py-2 divide-y divide-slate-50">
+              {isSearching && suggestions.length === 0 ? (
+                <div className="flex items-center gap-2 px-4 py-3 text-xs text-slate-400 font-medium">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-brand-green-700" />
+                  <span>Ort wird gesucht...</span>
+                </div>
+              ) : (
+                <>
+                  {suggestions.map((suggestion) => (
+                    <button
+                      key={suggestion.id}
+                      onClick={() => handleSelectSuggestion(suggestion)}
+                      className="w-full flex items-start text-left px-4 py-3 hover:bg-slate-50/80 active:bg-slate-100/80 transition-colors gap-3 cursor-pointer group"
+                    >
+                      <div className={`mt-0.5 p-1.5 rounded-full flex-shrink-0 ${
+                        suggestion.isRecommendation
+                          ? suggestion.isMustSee
+                            ? "bg-amber-50 text-amber-600"
+                            : "bg-brand-green-50 text-brand-green-700"
+                          : "bg-slate-50 text-slate-400"
+                      }`}>
+                        {suggestion.isRecommendation ? (
+                          suggestion.isMustSee ? (
+                            <Sparkles className="h-3.5 w-3.5 fill-amber-300" />
+                          ) : (
+                            <MapPin className="h-3.5 w-3.5" />
+                          )
+                        ) : (
+                          <MapPin className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 justify-between">
+                          <span className="text-xs font-bold text-slate-800 truncate group-hover:text-brand-green-800 transition-colors">
+                            {suggestion.name}
+                          </span>
+                          {suggestion.isRecommendation && (
+                            <span className="text-[8px] font-bold text-brand-green-700 bg-brand-green-50/80 px-1.5 py-0.5 rounded-full border border-brand-green-100/30 flex-shrink-0">
+                              Von {suggestion.userName}
+                            </span>
+                          )}
+                        </div>
+                        {suggestion.address && (
+                          <span className="text-[10px] text-slate-400 truncate block mt-0.5 leading-snug">
+                            {suggestion.address}
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Floating Friends Filter Bar or Add Friends Button */}
       {!isLoading && (
         user && friends.length > 0 ? (
-          <div className="absolute top-4 left-4 right-4 z-10 flex gap-2 overflow-x-auto no-scrollbar py-1">
+          <div className="absolute left-4 right-4 z-10 flex gap-2 overflow-x-auto no-scrollbar py-1" style={{ top: "76px" }}>
             <button
               onClick={() => handleSelectUser(null)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
@@ -584,7 +832,7 @@ export default function MapViewContent() {
             ))}
           </div>
         ) : (
-          <div className="absolute top-4 left-4 z-10 flex gap-2 py-1">
+          <div className="absolute left-4 z-10 flex gap-2 py-1" style={{ top: "76px" }}>
             <Link
               href="/profile/friends"
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-100 bg-white/95 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95"
@@ -599,6 +847,7 @@ export default function MapViewContent() {
       {/* Mapbox Map */}
       <div className="w-full h-full flex-1">
         <Map
+          ref={mapRef}
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
           style={{ width: "100%", height: "100%" }}

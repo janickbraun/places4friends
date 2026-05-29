@@ -7,6 +7,7 @@ interface PlaceResult {
   latitude: number | null;
   longitude: number | null;
   source: "google" | "mapbox";
+  type: string;
 }
 
 const GOOGLE_PLACES_ENDPOINT = "https://maps.googleapis.com/maps/api/place";
@@ -64,6 +65,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const mapGoogleType = (types: string[]): string => {
+      if (!types || types.length === 0) return "poi";
+      if (types.includes("country")) return "country";
+      if (types.includes("administrative_area_level_1") || types.includes("administrative_area_level_2")) return "region";
+      if (types.includes("locality")) return "city";
+      if (types.includes("sublocality") || types.includes("neighborhood")) return "neighborhood";
+      if (types.includes("route") || types.includes("street_address") || types.includes("postal_code")) return "address";
+      return "poi";
+    };
+
     const results: PlaceResult[] = (data.results ?? []).map((place: any) => ({
       id: place.place_id,
       name: place.name,
@@ -71,6 +82,7 @@ export async function GET(request: NextRequest) {
       latitude: place.geometry?.location?.lat ?? null,
       longitude: place.geometry?.location?.lng ?? null,
       source: "google",
+      type: mapGoogleType(place.types ?? []),
     }));
 
     return NextResponse.json({ results });
@@ -109,6 +121,18 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  const mapMapboxType = (placeTypes: string[]): string => {
+    if (!placeTypes || placeTypes.length === 0) return "poi";
+    const primary = placeTypes[0];
+    if (primary === "country") return "country";
+    if (primary === "region") return "region";
+    if (primary === "place" || primary === "locality") return "city";
+    if (primary === "district") return "region";
+    if (primary === "neighborhood") return "neighborhood";
+    if (primary === "address" || primary === "postcode") return "address";
+    return "poi";
+  };
+
   const results: PlaceResult[] = (data.features ?? []).map((feature: any) => ({
     id: feature.id,
     name: feature.text,
@@ -116,6 +140,7 @@ export async function GET(request: NextRequest) {
     latitude: feature.center?.[1] ?? null,
     longitude: feature.center?.[0] ?? null,
     source: "mapbox",
+    type: mapMapboxType(feature.place_type ?? []),
   }));
 
   return NextResponse.json({ results });
