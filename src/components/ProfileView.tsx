@@ -912,18 +912,20 @@ export default function ProfileView({
                               type="button"
                               onClick={() => startEdit(place)}
                               className="inline-flex items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-1 text-[10px] font-semibold text-slate-600 hover:border-slate-300 cursor-pointer"
+                              title="Bearbeiten"
                             >
                               <Pencil className="h-3 w-3" />
-                              Bearbeiten
+                              <span className="hidden sm:inline">Bearbeiten</span>
                             </button>
                             <button
                               type="button"
                               onClick={() => deletePlace(place.id)}
                               disabled={deletingId === place.id}
                               className="inline-flex items-center gap-1 rounded-lg border border-red-100 px-2.5 py-1 text-[10px] font-semibold text-red-600 disabled:opacity-60 cursor-pointer"
+                              title="Löschen"
                             >
                               <Trash2 className="h-3 w-3" />
-                              Loeschen
+                              <span className="hidden sm:inline">Loeschen</span>
                             </button>
                           </div>
                         )
