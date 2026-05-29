@@ -955,10 +955,10 @@ export default function MapViewContent() {
               onClose={() => setSelectedPlace(null)}
               anchor="top"
               closeButton={false}
-              className="z-20 font-sans"
+              className="z-20 font-sans custom-map-popup"
               maxWidth="260px"
             >
-              <div className="p-3 bg-white rounded-xl shadow-sm text-slate-800">
+              <div className="p-3 bg-white rounded-xl shadow-lg text-slate-800">
                 <div className="flex items-start justify-between gap-2">
                   <h4 className="font-bold text-sm text-slate-900">{selectedPlace.name}</h4>
                   <div className="flex items-center gap-1">
@@ -1032,16 +1032,13 @@ export default function MapViewContent() {
                   </div>
                 )}
 
-                <div className="mt-3 border-t border-slate-100 pt-3">
+                <div className="mt-3 flex items-center">
                   <button
                     type="button"
                     onClick={openComments}
-                    className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-semibold text-slate-600"
+                    className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-500 hover:text-slate-800 transition-colors cursor-pointer"
                   >
-                    <span className="inline-flex items-center gap-1.5">
-                      <MessageCircle className="h-3.5 w-3.5 text-slate-400" />
-                      Kommentare ansehen
-                    </span>
+                    <MessageCircle className="h-4 w-4 text-slate-400" />
                     <span>{comments.length}</span>
                   </button>
                 </div>
