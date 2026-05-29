@@ -20,11 +20,16 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: "Anmeldung fehlgeschlagen. Bitte Zugangsdaten pruefen." };
+    return { error: "Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen." };
   }
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const onboardingCompleted = user?.user_metadata?.onboarding_completed;
+
   revalidatePath("/", "layout");
-  redirect("/profile");
+  redirect(onboardingCompleted === true ? "/profile" : "/");
 }
 
 export async function signup(formData: FormData) {
@@ -46,6 +51,7 @@ export async function signup(formData: FormData) {
       data: {
         full_name: fullName || undefined,
         username: username || undefined,
+        onboarding_completed: false,
       },
     },
   });
@@ -58,12 +64,12 @@ export async function signup(formData: FormData) {
   if (!data.session) {
     return {
       success:
-        "Konto erstellt! Bitte pruefe dein E-Mail-Postfach und bestatige deine Adresse.",
+        "Konto erstellt! Bitte prüfe dein E-Mail-Postfach und bestätige deine Adresse.",
     };
   }
 
   revalidatePath("/", "layout");
-  redirect("/profile");
+  redirect("/");
 }
 
 export async function signout() {

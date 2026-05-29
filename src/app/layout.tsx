@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
+import OnboardingOverlay from "@/components/OnboardingOverlay";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -39,6 +40,8 @@ export default function RootLayout({
           <main className="flex-1 overflow-y-auto w-full no-scrollbar pb-4 bg-slate-50/20">
             {children}
           </main>
+
+          <OnboardingOverlay />
           
           {/* Persistent Navigation Bar */}
           <BottomNav />
