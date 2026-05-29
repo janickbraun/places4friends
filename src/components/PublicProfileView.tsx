@@ -172,11 +172,23 @@ export default function PublicProfileView({
       const result = await response.json();
 
       if (result.fallback) {
-        // Fallback: use client-side supabase calls
+        // Fallback: use client-side supabase calls to immediately establish accepted friendship
         if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
           await acceptFriendRequest();
         } else if (!friendship) {
-          await sendFriendRequest();
+          const { data, error } = await supabase
+            .from("friendships")
+            .insert({
+              sender_id: currentUserId,
+              receiver_id: friend.id,
+              status: "accepted",
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          setFriendship(data);
+          setLocalFriendsCount((prev) => prev + 1);
         }
       } else if (result.success && result.friendship) {
         const wasAccepted = friendship?.status === "accepted";
@@ -187,11 +199,27 @@ export default function PublicProfileView({
       }
     } catch (err) {
       console.error("Error accepting invite:", err);
-      // Fallback: use client-side supabase calls
-      if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
-        await acceptFriendRequest();
-      } else if (!friendship) {
-        await sendFriendRequest();
+      // Fallback: use client-side supabase calls to immediately establish accepted friendship
+      try {
+        if (friendship && friendship.status === "pending" && friendship.sender_id !== currentUserId) {
+          await acceptFriendRequest();
+        } else if (!friendship) {
+          const { data, error } = await supabase
+            .from("friendships")
+            .insert({
+              sender_id: currentUserId,
+              receiver_id: friend.id,
+              status: "accepted",
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          setFriendship(data);
+          setLocalFriendsCount((prev) => prev + 1);
+        }
+      } catch (fallbackErr) {
+        console.error("Fallback invite acceptance failed:", fallbackErr);
       }
     } finally {
       setIsSubmittingFriendship(false);
