@@ -791,7 +791,7 @@ export default function MapViewContent() {
       {/* Floating Search Bar */}
       {!isLoading && (
         <div ref={searchContainerRef} className="absolute top-4 left-4 right-4 z-20">
-          <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] px-4 py-3 transition-all duration-300 focus-within:ring-2 focus-within:ring-brand-green-700/10">
+          <div className="relative z-20 flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] px-4 py-3 transition-all duration-300 focus-within:ring-2 focus-within:ring-brand-green-700/10">
             <Search className="h-4 w-4 text-slate-400 mr-3.5 flex-shrink-0" />
             <input
               type="text"
@@ -917,7 +917,7 @@ export default function MapViewContent() {
       {/* Floating Friends Filter Bar or Add Friends Button */}
       {!isLoading && (
         user && friends.length > 0 ? (
-          <div className="absolute left-0 right-0 z-10 flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1" style={{ top: "76px" }}>
+          <div className="absolute left-0 right-0 z-10 top-[56px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
             <button
               onClick={() => {
                 setSelectedUsers([]);
@@ -959,7 +959,7 @@ export default function MapViewContent() {
             ))}
           </div>
         ) : (
-          <div className="absolute left-0 right-0 z-10 flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1" style={{ top: "76px" }}>
+          <div className="absolute left-0 right-0 z-10 top-[56px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
             <Link
               href="/profile/friends"
               className="flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border border-slate-100 bg-white/95 text-slate-700 hover:bg-slate-50 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95"
@@ -1429,4 +1429,3 @@ function formatCommentTimestamp(dateStr: string) {
     year: "numeric",
   });
 }
-
