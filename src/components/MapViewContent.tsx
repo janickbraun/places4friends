@@ -1217,7 +1217,7 @@ export default function MapViewContent() {
             <button
               onClick={handleLocateUser}
               disabled={isLocating}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-150 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 disabled:opacity-50 outline-none focus:outline-none"
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 disabled:opacity-50 outline-none focus:outline-none"
               title="Meinen Standort anzeigen"
             >
               {isLocating ? (
