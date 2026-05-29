@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Map, { Marker, Popup } from "react-map-gl/mapbox";
-import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus } from "lucide-react";
+import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus, MessageCircle, X } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -86,6 +86,7 @@ export default function MapViewContent() {
 
   const [selectedUser, setSelectedUser] = useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
   const [currentStyle, setCurrentStyle] = useState("mapbox://styles/mapbox/streets-v12");
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
@@ -403,6 +404,10 @@ export default function MapViewContent() {
     };
   }, [selectedPlace?.id, user?.id]);
 
+  useEffect(() => {
+    setIsCommentsOpen(false);
+  }, [selectedPlace?.id]);
+
   const handleSelectUser = (userId: string | null) => {
     setSelectedUser(userId);
     setSelectedPlace(null);
@@ -434,6 +439,15 @@ export default function MapViewContent() {
     }
 
     setIsCommentSaving(false);
+  };
+
+  const openComments = () => {
+    if (!selectedPlace) return;
+    setIsCommentsOpen(true);
+  };
+
+  const closeComments = () => {
+    setIsCommentsOpen(false);
   };
 
   const startEditComment = (comment: ActivityComment) => {
@@ -703,31 +717,99 @@ export default function MapViewContent() {
                 )}
 
                 <div className="mt-3 border-t border-slate-100 pt-3">
-                  <div className="flex items-center justify-between text-[10px] text-slate-400">
-                    <span className="font-semibold uppercase tracking-wide">Kommentare</span>
+                  <button
+                    type="button"
+                    onClick={openComments}
+                    className="flex w-full items-center justify-between rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-2 text-[10px] font-semibold text-slate-600"
+                  >
+                    <span className="inline-flex items-center gap-1.5">
+                      <MessageCircle className="h-3.5 w-3.5 text-slate-400" />
+                      Kommentare ansehen
+                    </span>
                     <span>{comments.length}</span>
-                  </div>
+                  </button>
+                </div>
+              </div>
+            </Popup>
+          )}
 
+          {/* Map Style Selector - inside Map so absolute positioning works correctly */}
+          <div className="absolute bottom-6 right-4 z-10 flex flex-col items-end gap-2">
+            {isStyleMenuOpen && (
+              <div className="flex flex-col gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100/50 shadow-xl">
+                {MAP_STYLES.map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => {
+                      setCurrentStyle(style.url);
+                      setIsStyleMenuOpen(false);
+                    }}
+                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl text-left transition-all duration-200 cursor-pointer min-w-[120px] ${
+                      currentStyle === style.url
+                        ? "bg-brand-green-800 text-white"
+                        : "text-slate-700 hover:bg-slate-50"
+                    }`}
+                  >
+                    {style.name}
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
+              className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 ${
+                isStyleMenuOpen ? "ring-2 ring-brand-green-700 text-brand-green-800" : ""
+              }`}
+              title="Kartenstil ändern"
+            >
+              <Layers className="h-5 w-5" />
+            </button>
+          </div>
+        </Map>
+      </div>
+
+      {/* Floating Login/Register Prompt Modal at the bottom when logged out */}
+      {!isLoading && !user && (
+        <div className="absolute bottom-20 left-4 right-4 z-20 bg-white/95 border border-slate-150 p-5 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col gap-3">
+          <div>
+
+          {isCommentsOpen && selectedPlace && (
+            <div className="fixed inset-0 z-[120] flex items-end justify-center bg-slate-950/50 px-4 pb-6 backdrop-blur-sm">
+              <div className="w-full max-w-md rounded-2xl border border-slate-100 bg-white shadow-2xl">
+                <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Kommentare</p>
+                    <h3 className="text-sm font-bold text-slate-900 truncate">{selectedPlace.name}</h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={closeComments}
+                    className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-50 hover:text-slate-600"
+                    aria-label="Kommentare schliessen"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+
+                <div className="max-h-[60vh] overflow-y-auto px-4 py-3">
                   {commentError && (
-                    <div className="mt-2 rounded-lg border border-red-100 bg-red-50 px-2 py-1 text-[10px] text-red-700">
+                    <div className="mb-3 rounded-lg border border-red-100 bg-red-50 px-2.5 py-2 text-[10px] text-red-700">
                       {commentError}
                     </div>
                   )}
 
                   {isCommentsLoading ? (
-                    <div className="mt-2 flex items-center gap-2 text-[10px] text-slate-400">
+                    <div className="flex items-center gap-2 text-[11px] text-slate-400">
                       <Loader2 className="h-3 w-3 animate-spin" />
                       Kommentare werden geladen...
                     </div>
                   ) : comments.length === 0 ? (
-                    <div className="mt-2 text-[10px] text-slate-500">
-                      Noch keine Kommentare.
-                    </div>
+                    <div className="text-[11px] text-slate-500">Noch keine Kommentare.</div>
                   ) : (
-                    <div className="mt-2 space-y-2">
+                    <div className="space-y-3">
                       {comments.map((comment) => (
                         <div key={comment.id} className="flex gap-2">
-                          <div className={`flex h-5 w-5 items-center justify-center overflow-hidden rounded-full text-[8px] font-bold text-white ${comment.userColor}`}>
+                          <div className={`flex h-6 w-6 items-center justify-center overflow-hidden rounded-full text-[9px] font-bold text-white ${comment.userColor}`}>
                             {comment.userAvatarUrl ? (
                               <img
                                 src={comment.userAvatarUrl}
@@ -740,7 +822,7 @@ export default function MapViewContent() {
                           </div>
                           <div className="flex-1">
                             <div className="flex items-center gap-2">
-                              <span className="text-[10px] font-semibold text-slate-700">
+                              <span className="text-[11px] font-semibold text-slate-700">
                                 {comment.userName}
                               </span>
                               <span className="text-[9px] text-slate-400">
@@ -799,72 +881,34 @@ export default function MapViewContent() {
                       ))}
                     </div>
                   )}
+                </div>
 
-                  {user ? (
-                    <form onSubmit={handleAddComment} className="mt-3 flex gap-2">
+                {user ? (
+                  <form onSubmit={handleAddComment} className="border-t border-slate-100 px-4 py-3">
+                    <div className="flex gap-2">
                       <input
                         value={commentInput}
                         onChange={(e) => setCommentInput(e.target.value)}
                         placeholder="Kommentar schreiben"
-                        className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[11px] text-slate-700 outline-none focus:border-brand-green-500"
+                        className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-2 text-[11px] text-slate-700 outline-none focus:border-brand-green-500"
                       />
                       <button
                         type="submit"
                         disabled={isCommentSaving || commentInput.trim().length === 0}
-                        className="rounded-lg bg-brand-green-700 px-3 py-1.5 text-[10px] font-semibold text-white transition-all disabled:opacity-60"
+                        className="rounded-lg bg-brand-green-700 px-3 py-2 text-[10px] font-semibold text-white transition-all disabled:opacity-60"
                       >
                         {isCommentSaving ? "..." : "Senden"}
                       </button>
-                    </form>
-                  ) : (
-                    <div className="mt-3 text-[10px] text-slate-500">
-                      Melde dich an, um zu kommentieren.
                     </div>
-                  )}
-                </div>
+                  </form>
+                ) : (
+                  <div className="border-t border-slate-100 px-4 py-3 text-[10px] text-slate-500">
+                    Melde dich an, um zu kommentieren.
+                  </div>
+                )}
               </div>
-            </Popup>
+            </div>
           )}
-
-          {/* Map Style Selector - inside Map so absolute positioning works correctly */}
-          <div className="absolute bottom-6 right-4 z-10 flex flex-col items-end gap-2">
-            {isStyleMenuOpen && (
-              <div className="flex flex-col gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100/50 shadow-xl">
-                {MAP_STYLES.map((style) => (
-                  <button
-                    key={style.id}
-                    onClick={() => {
-                      setCurrentStyle(style.url);
-                      setIsStyleMenuOpen(false);
-                    }}
-                    className={`px-3 py-1.5 text-xs font-semibold rounded-xl text-left transition-all duration-200 cursor-pointer min-w-[120px] ${
-                      currentStyle === style.url
-                        ? "bg-brand-green-800 text-white"
-                        : "text-slate-700 hover:bg-slate-50"
-                    }`}
-                  >
-                    {style.name}
-                  </button>
-                ))}
-              </div>
-            )}
-            <button
-              onClick={() => setIsStyleMenuOpen(!isStyleMenuOpen)}
-              className={`flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 ${
-                isStyleMenuOpen ? "ring-2 ring-brand-green-700 text-brand-green-800" : ""
-              }`}
-              title="Kartenstil ändern"
-            >
-              <Layers className="h-5 w-5" />
-            </button>
-          </div>
-        </Map>
-      </div>
-
-      {/* Floating Login/Register Prompt Modal at the bottom when logged out */}
-      {!isLoading && !user && (
-        <div className="absolute bottom-20 left-4 right-4 z-20 bg-white/95 border border-slate-150 p-5 rounded-2xl shadow-2xl backdrop-blur-md flex flex-col gap-3">
-          <div>
             <h3 className="text-sm font-bold text-slate-900">Entdecke Orte mit deinen Freunden</h3>
             <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
               Melde dich an oder registriere dich, um die Lieblingsorte deiner Freunde auf der interaktiven Karte zu sehen.
