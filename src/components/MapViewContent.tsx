@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import Map, { Marker, Popup } from "react-map-gl/mapbox";
-import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus, MessageCircle, X } from "lucide-react";
+import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus, MessageCircle, X, Locate } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -108,6 +108,8 @@ export default function MapViewContent() {
     return "mapbox://styles/mapbox/streets-v12";
   });
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
+  const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLocating, setIsLocating] = useState(false);
   const [comments, setComments] = useState<ActivityComment[]>([]);
   const [commentInput, setCommentInput] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -469,6 +471,53 @@ export default function MapViewContent() {
     setSearchQuery("");
     setSuggestions([]);
     setShowSuggestions(false);
+  };
+
+  const handleLocateUser = () => {
+    if (!navigator.geolocation) {
+      alert("Geolokalisierung wird von deinem Browser nicht unterstützt.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        setUserLocation({ latitude, longitude });
+        setIsLocating(false);
+
+        mapRef.current?.flyTo({
+          center: [longitude, latitude],
+          zoom: 15,
+          duration: 1500,
+        });
+
+        setViewState((prev) => ({
+          ...prev,
+          latitude,
+          longitude,
+          zoom: 15,
+        }));
+      },
+      (error) => {
+        console.error("Error getting location:", error);
+        setIsLocating(false);
+        let message = "Dein Standort konnte nicht ermittelt werden.";
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Standortzugriff wurde verweigert. Bitte erlaube den Standortzugriff in deinem Browser.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = "Standortinformationen sind derzeit nicht verfügbar.";
+        } else if (error.code === error.TIMEOUT) {
+          message = "Die Anfrage zur Ermittlung des Standorts hat das Zeitlimit überschritten.";
+        }
+        alert(message);
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0,
+      }
+    );
   };
 
   const toggleWishlist = async (activityId: string) => {
@@ -886,6 +935,19 @@ export default function MapViewContent() {
             </Marker>
           ))}
 
+          {userLocation && (
+            <Marker
+              latitude={userLocation.latitude}
+              longitude={userLocation.longitude}
+              anchor="center"
+            >
+              <div className="relative flex h-5 w-5 items-center justify-center pointer-events-none">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500 border-2 border-white shadow-md"></span>
+              </div>
+            </Marker>
+          )}
+
           {selectedPlace && (
             <Popup
               latitude={selectedPlace.latitude}
@@ -987,8 +1049,21 @@ export default function MapViewContent() {
             </Popup>
           )}
 
-          {/* Map Style Selector - inside Map so absolute positioning works correctly */}
+          {/* Map Style & Location controls - inside Map so absolute positioning works correctly */}
           <div className="absolute bottom-24 right-4 z-10 flex flex-col items-end gap-2">
+            <button
+              onClick={handleLocateUser}
+              disabled={isLocating}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-slate-100 bg-white/95 backdrop-blur-md text-slate-700 shadow-lg transition-all duration-200 cursor-pointer hover:bg-slate-50 active:scale-95 disabled:opacity-50"
+              title="Meinen Standort anzeigen"
+            >
+              {isLocating ? (
+                <Loader2 className="h-5 w-5 animate-spin text-brand-green-700" />
+              ) : (
+                <Locate className="h-5 w-5" />
+              )}
+            </button>
+
             {isStyleMenuOpen && (
               <div className="flex flex-col gap-1.5 p-1.5 bg-white/95 backdrop-blur-md rounded-2xl border border-slate-100/50 shadow-xl">
                 {MAP_STYLES.map((style) => (
