@@ -1,6 +1,12 @@
 import ProfileView from "@/components/ProfileView";
 import AuthPrompt from "@/components/AuthPrompt";
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Mein Profil",
+  description: "Verwalte deine Empfehlungen, Wunschliste und dein Profil auf places4friends.",
+};
 
 export default async function ProfilePage() {
   const supabase = await createClient();

@@ -1,6 +1,12 @@
 import RegisterForm from "@/components/RegisterForm";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Registrieren",
+  description: "Erstelle ein Konto bei places4friends und verbinde dich mit deinen Freunden auf einer gemeinsamen Karte.",
+};
 
 export default function RegisterPage() {
   return (

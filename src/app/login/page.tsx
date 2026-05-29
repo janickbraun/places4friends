@@ -1,6 +1,12 @@
 import LoginForm from "@/components/LoginForm";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Anmelden",
+  description: "Melde dich bei places4friends an, um deine Karte zu sehen und Empfehlungen mit Freunden zu teilen.",
+};
 
 export default function LoginPage() {
   return (

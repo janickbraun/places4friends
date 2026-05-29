@@ -1,6 +1,12 @@
 import RecommendView from "@/components/RecommendView";
 import AuthPrompt from "@/components/AuthPrompt";
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Ort empfehlen",
+  description: "Teile eine neue Empfehlung und hebe deine Highlights auf der Karte mit deinen Freunden hervor.",
+};
 
 export default async function CreatePage() {
   const supabase = await createClient();

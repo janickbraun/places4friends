@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { ArrowLeft, Shield } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Datenschutzerklärung",
+  description: "Informationen zum Datenschutz und zur Verarbeitung personenbezogener Daten bei places4friends.",
+};
 
 export default function DatenschutzPage() {
   return (

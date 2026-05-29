@@ -17,15 +17,23 @@ export const metadata: Metadata = {
       ? `https://${process.env.VERCEL_URL}`
       : "http://localhost:3000"
   ),
-  title: "places4friends",
-  description: "Teile und erkunde interessante Orte mit deinen Freunden.",
+  title: {
+    default: "places4friends - Finde & teile Lieblingsorte mit Freunden",
+    template: "%s | places4friends",
+  },
+  description: "Erstelle eine interaktive Karte mit deinen Freunden. Empfiehl Restaurants, Bars, Cafés und Aktivitäten ohne anonyme Reise-Bewertungen - direkt von deinen Freunden empfohlen.",
+  keywords: ["Lieblingsorte", "Freunde", "Karte", "Empfehlungen", "Restaurants", "Bars", "Cafés", "Social Map", "Mapbox", "Regensburg", "Reisetipps"],
+  robots: {
+    index: true,
+    follow: true,
+  },
   icons: {
     icon: "/logo-round.png",
     apple: "/logo.jpg",
   },
   openGraph: {
-    title: "places4friends",
-    description: "Teile und erkunde interessante Orte mit deinen Freunden.",
+    title: "places4friends - Finde & teile Lieblingsorte mit Freunden",
+    description: "Erstelle eine interaktive Karte mit deinen Freunden. Empfiehl Restaurants, Bars, Cafés und Aktivitäten ohne anonyme Reise-Bewertungen - direkt von deinen Freunden empfohlen.",
     images: [
       {
         url: "/socialbanner.jpg",
@@ -38,8 +46,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "places4friends",
-    description: "Teile und erkunde interessante Orte mit deinen Freunden.",
+    title: "places4friends - Finde & teile Lieblingsorte mit Freunden",
+    description: "Erstelle eine interaktive Karte mit deinen Freunden. Empfiehl Restaurants, Bars, Cafés und Aktivitäten ohne anonyme Reise-Bewertungen - direkt von deinen Freunden empfohlen.",
     images: ["/socialbanner.jpg"],
   },
 };

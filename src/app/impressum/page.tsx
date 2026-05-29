@@ -1,5 +1,11 @@
 import Link from "next/link";
 import { ArrowLeft, FileText } from "lucide-react";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Impressum",
+  description: "Rechtliche Informationen und Anbieterkennzeichnung von places4friends.",
+};
 
 export default function ImpressumPage() {
   return (

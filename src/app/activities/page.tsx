@@ -1,6 +1,12 @@
 import ActivitiesView from "@/components/ActivitiesView";
 import AuthPrompt from "@/components/AuthPrompt";
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Aktivitäten",
+  description: "Entdecke die neuesten Aktivitäten und persönlichen Empfehlungen deiner Freunde auf places4friends.",
+};
 
 export const revalidate = 0; // Disable caching to ensure fresh feed
 

@@ -1,6 +1,12 @@
 import FriendsView from "@/components/FriendsView";
 import AuthPrompt from "@/components/AuthPrompt";
 import { createClient } from "@/lib/supabase/server";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Freunde & Anfragen",
+  description: "Finde deine Freunde auf places4friends und verwalte deine Freundschaftsanfragen.",
+};
 
 export default async function FriendsPage() {
   const supabase = await createClient();
