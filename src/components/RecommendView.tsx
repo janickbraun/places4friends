@@ -94,7 +94,7 @@ export default function RecommendView() {
   // Form fields (pre-filled from place selection but editable)
   const [placeName, setPlaceName] = useState("");
   const [placeAddress, setPlaceAddress] = useState("");
-  const [isSuperLike, setIsSuperLike] = useState(false);
+  const [isMustSee, setIsMustSee] = useState(false);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [description, setDescription] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -281,7 +281,7 @@ export default function RecommendView() {
     setSelectedSearchResult(null);
     setPlaceName("");
     setPlaceAddress("");
-    setIsSuperLike(false);
+    setIsMustSee(false);
     setSelectedCategories([]);
     setDescription("");
     setSelectedFiles([]);
@@ -349,7 +349,7 @@ export default function RecommendView() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...payload,
-          isSuperLike,
+          isMustSee,
           categories: selectedCategories,
           description: description.trim() || null,
           imageUrls: uploadedUrls,
@@ -761,50 +761,50 @@ export default function RecommendView() {
               </div>
             </div>
 
-            {/* Superlike Toggle */}
+            {/* Must See Toggle */}
             <div className="space-y-1.5">
               <label className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">
-                Like oder Superlike
+                Highlight
               </label>
               <button
                 type="button"
-                onClick={() => setIsSuperLike(!isSuperLike)}
+                onClick={() => setIsMustSee(!isMustSee)}
                 className={`relative w-full flex items-center justify-between overflow-hidden rounded-2xl border p-4 text-left transition-all duration-300 cursor-pointer ${
-                  isSuperLike
+                  isMustSee
                     ? "border-amber-200 bg-amber-50/50 shadow-md shadow-amber-500/5 ring-1 ring-amber-400/30"
                     : "border-slate-200 bg-white hover:border-slate-300 shadow-sm"
                 }`}
               >
-                {isSuperLike && (
+                {isMustSee && (
                   <div className="absolute -right-6 -bottom-6 h-24 w-24 rounded-full bg-amber-200/20 blur-xl pointer-events-none" />
                 )}
                 <div className="flex items-center gap-3.5 z-10">
                   <div
                     className={`flex h-10 w-10 items-center justify-center rounded-xl transition-all duration-300 ${
-                      isSuperLike
+                      isMustSee
                         ? "bg-gradient-to-br from-amber-400 to-amber-500 text-white shadow-md shadow-amber-500/30 rotate-6"
                         : "bg-slate-100 text-slate-400"
                     }`}
                   >
-                    <Sparkles className={`h-5 w-5 ${isSuperLike ? "animate-pulse" : ""}`} />
+                    <Sparkles className={`h-5 w-5 ${isMustSee ? "animate-pulse" : ""}`} />
                   </div>
                   <div>
-                    <h4 className={`text-sm font-bold transition-colors ${isSuperLike ? "text-amber-900" : "text-slate-700"}`}>
-                      Superlike
+                    <h4 className={`text-sm font-bold transition-colors ${isMustSee ? "text-amber-900" : "text-slate-700"}`}>
+                      Must See
                     </h4>
-                    <p className={`text-xs mt-0.5 transition-colors ${isSuperLike ? "text-amber-800/80" : "text-slate-400"}`}>
+                    <p className={`text-xs mt-0.5 transition-colors ${isMustSee ? "text-amber-800/80" : "text-slate-400"}`}>
                       Markiere diesen Ort als besonderes Highlight.
                     </p>
                   </div>
                 </div>
                 <div
                   className={`relative h-6 w-11 shrink-0 rounded-full transition-colors duration-300 p-0.5 z-10 ${
-                    isSuperLike ? "bg-amber-500" : "bg-slate-200"
+                    isMustSee ? "bg-amber-500" : "bg-slate-200"
                   }`}
                 >
                   <div
                     className={`h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-300 ${
-                      isSuperLike ? "translate-x-5" : "translate-x-0"
+                      isMustSee ? "translate-x-5" : "translate-x-0"
                     }`}
                   />
                 </div>

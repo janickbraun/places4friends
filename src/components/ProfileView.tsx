@@ -649,7 +649,7 @@ export default function ProfileView({
         body: JSON.stringify({
           placeName: trimmedName,
           description: editReview.trim() || null,
-          isSuperLike: editIsMustSee,
+          isMustSee: editIsMustSee,
           categories: editCategories,
           imageUrls: finalImageUrls,
         }),

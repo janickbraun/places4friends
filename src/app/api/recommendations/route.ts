@@ -7,7 +7,7 @@ interface RecommendationPayload {
   placeAddress: string | null;
   latitude: number | null;
   longitude: number | null;
-  isSuperLike: boolean;
+  isMustSee?: boolean;
   categories?: string[] | null;
   description: string | null;
   imageUrls?: string[] | null;
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
       place_address: payload.placeAddress?.trim() || null,
       latitude: payload.latitude,
       longitude: payload.longitude,
-      is_superlike: payload.isSuperLike,
+      is_superlike: Boolean(payload.isMustSee),
       categories,
       description: payload.description?.trim() || null,
       image_urls: imageUrls,

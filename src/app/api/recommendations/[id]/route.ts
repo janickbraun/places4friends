@@ -50,7 +50,7 @@ export async function PATCH(
   let payload: {
     placeName?: unknown;
     description?: unknown;
-    isSuperLike?: unknown;
+    isMustSee?: unknown;
     categories?: unknown;
     imageUrls?: unknown;
   };
@@ -66,7 +66,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Name fehlt." }, { status: 400 });
   }
 
-  if (typeof payload.isSuperLike !== "boolean") {
+  if (typeof payload.isMustSee !== "boolean") {
     return NextResponse.json({ error: "Ungültige Markierung." }, { status: 400 });
   }
 
@@ -79,7 +79,7 @@ export async function PATCH(
   const updateFields: any = {
     place_name: placeName,
     description: description || null,
-    is_superlike: payload.isSuperLike,
+    is_superlike: payload.isMustSee,
     categories,
   };
 
