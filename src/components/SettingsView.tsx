@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Mail, Save, User, AtSign, Bell, Trash2, X, AlertTriangle, Loader2, Sparkles } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 
 interface UserProfile {
   id: string;
@@ -114,7 +115,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      const response = await fetch('/api/user', {
+      const response = await authenticatedFetch("/api/user", {
         method: 'DELETE',
       });
       
@@ -123,9 +124,10 @@ export default function SettingsView({ user }: { user: UserProfile }) {
         throw new Error(data.error || "Konto konnte nicht gelöscht werden.");
       }
       
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push('/register');
+      const { signOutClient } = await import("@/lib/auth/signOutClient");
+      await signOutClient();
+      router.push("/register");
+      router.refresh();
     } catch (error: any) {
       setDeleteError(error.message);
       setIsDeleting(false);

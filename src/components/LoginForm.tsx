@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { login } from "@/app/login/actions";
+import { useRouter } from "next/navigation";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getLoginErrorMessage } from "@/lib/authErrors";
 
 export default function LoginForm() {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -12,12 +15,31 @@ export default function LoginForm() {
     e.preventDefault();
     setLoading(true);
     setError("");
+
     const formData = new FormData(e.currentTarget);
-    const result = await login(formData);
-    if (result?.error) {
-      setError(result.error);
+    const email = (formData.get("email") as string)?.trim();
+    const password = formData.get("password") as string;
+
+    if (!email || !password) {
+      setError("Bitte E-Mail und Passwort eingeben.");
       setLoading(false);
+      return;
     }
+
+    const supabase = createClient();
+    const { error: authError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (authError) {
+      setError(getLoginErrorMessage(authError));
+      setLoading(false);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   };
 
   return (
@@ -37,6 +59,7 @@ export default function LoginForm() {
             name="email"
             type="email"
             required
+            autoComplete="email"
             placeholder="name@beispiel.de"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
@@ -58,6 +81,7 @@ export default function LoginForm() {
             name="password"
             type="password"
             required
+            autoComplete="current-password"
             placeholder="Dein Passwort"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />

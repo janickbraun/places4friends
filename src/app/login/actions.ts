@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 export async function login(formData: FormData) {
   const supabase = await createClient();
 
-  const email = formData.get("email") as string;
+  const email = (formData.get("email") as string)?.trim();
   const password = formData.get("password") as string;
 
   if (!email || !password) {
@@ -20,10 +20,16 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: "Anmeldung fehlgeschlagen. Bitte Zugangsdaten prüfen." };
+    const { getLoginErrorMessage } = await import("@/lib/authErrors");
+    return { error: getLoginErrorMessage(error) };
   }
 
   revalidatePath("/", "layout");
+  revalidatePath("/activities", "page");
+  revalidatePath("/profile", "page");
+  revalidatePath("/profile/friends", "page");
+  revalidatePath("/profile/settings", "page");
+  revalidatePath("/create", "page");
   redirect("/");
 }
 
@@ -63,12 +69,10 @@ export async function signup(formData: FormData) {
   }
 
   revalidatePath("/", "layout");
-  redirect("/");
-}
-
-export async function signout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  revalidatePath("/", "layout");
+  revalidatePath("/activities", "page");
+  revalidatePath("/profile", "page");
+  revalidatePath("/profile/friends", "page");
+  revalidatePath("/profile/settings", "page");
+  revalidatePath("/create", "page");
   redirect("/");
 }

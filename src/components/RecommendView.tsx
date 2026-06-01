@@ -19,6 +19,22 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import {
+  FALLBACK_VIEWPORT,
+  ZOOM_DETAIL,
+  debounce,
+  fetchApproximateGeoFromApi,
+  getCurrentUserPosition,
+  getGeolocationPermission,
+  GEOLOCATION_NOT_SUPPORTED_MESSAGE,
+  getGeolocationErrorMessage,
+  locateUserPosition,
+  resolveInitialViewport,
+  saveViewport,
+  type MapViewport,
+} from "@/lib/mapViewport";
+import Toast from "@/components/Toast";
 
 interface PlaceResult {
   id: string;
@@ -72,11 +88,23 @@ export default function RecommendView() {
   // Map state
   const mapRef = useRef<any>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
-  const [viewState, setViewState] = useState({
-    longitude: 12.1016,
-    latitude: 49.0151,
-    zoom: 11,
+  const [viewState, setViewState] = useState<MapViewport>({
+    longitude: FALLBACK_VIEWPORT.longitude,
+    latitude: FALLBACK_VIEWPORT.latitude,
+    zoom: FALLBACK_VIEWPORT.zoom,
   });
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
+  const viewStateRef = useRef(viewState);
+  const viewportResolvedRef = useRef(false);
+  viewStateRef.current = viewState;
+
+  const persistViewportDebounced = useRef(
+    debounce((userId: string, viewport: MapViewport) => {
+      saveViewport(userId, viewport);
+    }, 500)
+  ).current;
 
   // Selected pin
   const [pinCoords, setPinCoords] = useState<{ lat: number; lng: number } | null>(null);
@@ -115,8 +143,75 @@ export default function RecommendView() {
   const [isStyleMenuOpen, setIsStyleMenuOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationToast, setLocationToast] = useState<string | null>(null);
 
   const canSave = useMemo(() => placeName.trim().length > 0, [placeName]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    let mounted = true;
+
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (!mounted) return;
+      setAuthUserId(user?.id ?? null);
+      setIsAuthLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (isAuthLoading || viewportResolvedRef.current) return;
+
+    async function initViewport() {
+      try {
+        const viewport = await resolveInitialViewport({
+          userId: authUserId,
+          urlLat: null,
+          urlLng: null,
+          placeId: null,
+          places: [],
+          fetchApproximateGeo: fetchApproximateGeoFromApi,
+        });
+
+        setViewState(viewport);
+        viewportResolvedRef.current = true;
+
+        const permission = await getGeolocationPermission();
+        if (permission === "granted") {
+          try {
+            const position = await getCurrentUserPosition();
+            setUserLocation(position);
+          } catch {
+            setUserLocation({
+              latitude: viewport.latitude,
+              longitude: viewport.longitude,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error resolving initial map viewport:", err);
+        setViewState({ ...FALLBACK_VIEWPORT });
+        viewportResolvedRef.current = true;
+      }
+    }
+
+    initViewport();
+  }, [isAuthLoading, authUserId]);
+
+  const handleMoveEnd = useCallback(() => {
+    if (!authUserId) return;
+    void getGeolocationPermission().then((permission) => {
+      if (permission === "granted") return;
+      persistViewportDebounced(authUserId, {
+        latitude: viewStateRef.current.latitude,
+        longitude: viewStateRef.current.longitude,
+        zoom: viewStateRef.current.zoom,
+      });
+    });
+  }, [authUserId, persistViewportDebounced]);
 
   // ----------------------------------------------------------------
   // Search logic (debounced)
@@ -179,8 +274,8 @@ export default function RecommendView() {
       setPlaceName(name);
       if (lat && lng) {
         setPinCoords({ lat, lng });
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: 15, duration: 1200 });
-        setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: 15 }));
+        mapRef.current?.flyTo({ center: [lng, lat], zoom: ZOOM_DETAIL, duration: 1200 });
+        setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: ZOOM_DETAIL }));
       }
       setFormStep("form");
       setShowSuggestions(false);
@@ -344,7 +439,7 @@ export default function RecommendView() {
         }
       }
 
-      const response = await fetch("/api/recommendations", {
+      const response = await authenticatedFetch("/api/recommendations", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -389,21 +484,19 @@ export default function RecommendView() {
   };
 
   const handleLocateUser = () => {
-    if (!navigator.geolocation) {
-      alert("Geolokalisierung wird von deinem Browser nicht unterstützt.");
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationToast(GEOLOCATION_NOT_SUPPORTED_MESSAGE);
       return;
     }
 
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
+    void locateUserPosition()
+      .then(({ latitude, longitude }) => {
         setUserLocation({ latitude, longitude });
-        setIsLocating(false);
 
         mapRef.current?.flyTo({
           center: [longitude, latitude],
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
           duration: 1500,
         });
 
@@ -411,28 +504,16 @@ export default function RecommendView() {
           ...prev,
           latitude,
           longitude,
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
         }));
-      },
-      (error) => {
+      })
+      .catch((error) => {
         console.error("Error getting location:", error);
+        setLocationToast(getGeolocationErrorMessage(error));
+      })
+      .finally(() => {
         setIsLocating(false);
-        let message = "Dein Standort konnte nicht ermittelt werden.";
-        if (error.code === error.PERMISSION_DENIED) {
-          message = "Standortzugriff wurde verweigert. Bitte erlaube den Standortzugriff in deinem Browser.";
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          message = "Standortinformationen sind derzeit nicht verfügbar.";
-        } else if (error.code === error.TIMEOUT) {
-          message = "Die Anfrage zur Ermittlung des Standorts hat das Zeitlimit überschritten.";
-        }
-        alert(message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
+      });
   };
 
   const mapboxToken = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
@@ -462,6 +543,7 @@ export default function RecommendView() {
             ref={mapRef}
             {...viewState}
             onMove={(evt) => setViewState(evt.viewState)}
+            onMoveEnd={handleMoveEnd}
             onClick={handleMapClick}
             style={{ width: "100%", height: "100%" }}
             mapStyle={currentStyle}
@@ -551,6 +633,12 @@ export default function RecommendView() {
         )}
       </div>
 
+      {locationToast && (
+        <div className="pointer-events-none absolute top-4 left-4 right-4 z-[25]">
+          <Toast message={locationToast} onDismiss={() => setLocationToast(null)} />
+        </div>
+      )}
+
       {/* ── Floating Search Bar ── */}
       <div
         ref={searchContainerRef}
@@ -560,7 +648,13 @@ export default function RecommendView() {
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
         className={`absolute left-4 right-4 z-20 transition-all duration-300 ${
-          formStep === "form" ? "top-4 opacity-60 pointer-events-none" : "top-4"
+          formStep === "form"
+            ? locationToast
+              ? "top-[4.5rem] opacity-60 pointer-events-none"
+              : "top-4 opacity-60 pointer-events-none"
+            : locationToast
+              ? "top-[4.5rem]"
+              : "top-4"
         }`}
       >
         <div className="relative flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.10)] px-4 py-3 transition-all duration-300 focus-within:ring-2 focus-within:ring-brand-green-700/20">

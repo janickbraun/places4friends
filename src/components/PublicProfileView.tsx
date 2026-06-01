@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Bookmark, MapPin, X, Loader2, UserPlus, UserCheck, Clock, UserMinus, MessageCircle, MoreVertical, Pencil, Trash2, Sparkles } from "lucide-react";
 import ActivityCard from "./ActivityCard";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface ActivityComment {
   id: string;
@@ -81,6 +83,10 @@ export default function PublicProfileView({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
+  const [commentDeleteConfirm, setCommentDeleteConfirm] = useState<{
+    placeId: string;
+    commentId: string;
+  } | null>(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const supabase = createClient();
@@ -161,7 +167,7 @@ export default function PublicProfileView({
   const handleAcceptInvite = async () => {
     setIsSubmittingFriendship(true);
     try {
-      const response = await fetch("/api/friendships/invite", {
+      const response = await authenticatedFetch("/api/friendships/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ inviteeId: friend.id }),
@@ -493,8 +499,6 @@ export default function PublicProfileView({
   };
 
   const handleDeleteComment = async (placeId: string, commentId: string) => {
-    if (!globalThis.confirm("Kommentar wirklich löschen?")) return;
-
     setCommentDeletingId(commentId);
     setCommentErrors((prev) => ({ ...prev, [placeId]: null }));
 
@@ -517,7 +521,7 @@ export default function PublicProfileView({
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
       try {
-        const response = await fetch(`/api/wishlist?activityId=${activityId}`, {
+        const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
         });
         if (!response.ok) throw new Error();
@@ -527,7 +531,7 @@ export default function PublicProfileView({
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
       try {
-        const response = await fetch("/api/wishlist", {
+        const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ activityId }),
@@ -818,7 +822,10 @@ export default function PublicProfileView({
                                                 type="button"
                                                 onClick={() => {
                                                   setActiveCommentMenuId(null);
-                                                  handleDeleteComment(place.id, comment.id);
+                                                  setCommentDeleteConfirm({
+                                                    placeId: place.id,
+                                                    commentId: comment.id,
+                                                  });
                                                 }}
                                                 className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-rose-650 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
                                               >
@@ -907,7 +914,7 @@ export default function PublicProfileView({
                 Beiträge sind privat
               </h4>
               <p className="text-[11px] text-slate-400 max-w-[240px] mx-auto mt-1 leading-relaxed">
-                Verbinde dich mit {friend.name?.split(" ")[0] ?? "diesem User"}, um seine Empfehlungen zu sehen.
+                Verbinde dich mit {friend.name?.split(" ")[0] ?? "diesem User"}, um die Empfehlungen zu sehen.
               </p>
             </div>
           )}
@@ -992,6 +999,23 @@ export default function PublicProfileView({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={commentDeleteConfirm !== null}
+        title="Kommentar löschen?"
+        message="Möchtest du diesen Kommentar wirklich löschen? Dieser Schritt kann nicht rückgängig gemacht werden."
+        isLoading={
+          commentDeleteConfirm !== null &&
+          commentDeletingId === commentDeleteConfirm.commentId
+        }
+        onCancel={() => setCommentDeleteConfirm(null)}
+        onConfirm={() => {
+          if (!commentDeleteConfirm) return;
+          const { placeId, commentId } = commentDeleteConfirm;
+          setCommentDeleteConfirm(null);
+          void handleDeleteComment(placeId, commentId);
+        }}
+      />
     </div>
   );
 }

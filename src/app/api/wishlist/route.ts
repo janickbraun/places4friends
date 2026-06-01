@@ -1,11 +1,9 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient, getApiUser } from "@/lib/supabase/apiAuth";
 
-export async function GET() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+export async function GET(request: Request) {
+  const user = await getApiUser(request);
+  const supabase = await createApiClient(request);
 
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
@@ -93,10 +91,8 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getApiUser(request);
+  const supabase = await createApiClient(request);
 
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
@@ -135,10 +131,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getApiUser(request);
+  const supabase = await createApiClient(request);
 
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });

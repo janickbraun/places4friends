@@ -2,10 +2,13 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Settings, Sparkles, LogOut, MapPin, Pencil, Trash2, X, Check, Bookmark, Loader2, Menu, Shield, FileText, MoreVertical, MessageCircle, Share2, Plus } from "lucide-react";
-import { signout } from "@/app/login/actions";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import { signOutClient } from "@/lib/auth/signOutClient";
 import ActivityCard from "./ActivityCard";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface User {
   id: string;
@@ -91,6 +94,7 @@ export default function ProfileView({
   wishlist?: WishlistItem[];
 }) {
   const supabase = createClient();
+  const router = useRouter();
 
   const [items, setItems] = useState<PlaceItem[]>(places);
   const [wishlistItems, setWishlistItems] = useState<WishlistItem[]>(wishlist);
@@ -101,6 +105,7 @@ export default function ProfileView({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleShareInviteLink = async () => {
     if (!user) return;
@@ -149,6 +154,10 @@ export default function ProfileView({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
+  const [commentDeleteConfirm, setCommentDeleteConfirm] = useState<{
+    placeId: string;
+    commentId: string;
+  } | null>(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -228,7 +237,7 @@ export default function ProfileView({
   const handleRemoveFromWishlist = async (activityId: string) => {
     setWishlistItems((prev) => prev.filter((item) => item.activityId !== activityId));
     try {
-      const response = await fetch(`/api/wishlist?activityId=${activityId}`, {
+      const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error();
@@ -643,7 +652,7 @@ export default function ProfileView({
           .catch((err) => console.error("Failed to delete removed images from storage", err));
       }
 
-      const response = await fetch(`/api/recommendations/${placeId}`, {
+      const response = await authenticatedFetch(`/api/recommendations/${placeId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -690,7 +699,7 @@ export default function ProfileView({
     setDeletingId(placeId);
     setActionError(null);
     try {
-      const response = await fetch(`/api/recommendations/${placeId}`, {
+      const response = await authenticatedFetch(`/api/recommendations/${placeId}`, {
         method: "DELETE",
       });
       const data = await response.json();
@@ -840,8 +849,6 @@ export default function ProfileView({
   };
 
   const handleDeleteComment = async (placeId: string, commentId: string) => {
-    if (!globalThis.confirm("Kommentar wirklich löschen?")) return;
-
     setCommentDeletingId(commentId);
     setCommentErrors((prev) => ({ ...prev, [placeId]: null }));
 
@@ -857,6 +864,19 @@ export default function ProfileView({
     }
 
     setCommentDeletingId(null);
+  };
+
+  const handleLogout = async () => {
+    setIsMenuOpen(false);
+    setIsLoggingOut(true);
+    try {
+      await signOutClient();
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      console.error("Logout failed:", err);
+      setIsLoggingOut(false);
+    }
   };
 
   return (
@@ -878,11 +898,12 @@ export default function ProfileView({
             <>
               {/* Backdrop */}
               <div
-                className="fixed inset-0 z-40 bg-transparent"
+                className="fixed inset-0 z-[60] bg-transparent"
                 onClick={() => setIsMenuOpen(false)}
+                aria-hidden
               />
               {/* Dropdown Menu */}
-              <div className="absolute right-0 mt-2 w-56 origin-top-right rounded-2xl border border-slate-100 bg-white p-2 shadow-xl ring-1 ring-black/5 focus:outline-none z-50 animate-in fade-in slide-in-from-top-2 duration-100">
+              <div className="absolute right-0 z-[70] mt-2 w-56 origin-top-right rounded-2xl border border-slate-100 bg-white p-2 shadow-xl ring-1 ring-black/5 focus:outline-none animate-in fade-in slide-in-from-top-2 duration-100">
                 <Link
                   href="/profile/settings"
                   onClick={() => setIsMenuOpen(false)}
@@ -924,15 +945,19 @@ export default function ProfileView({
 
                 <div className="my-1 border-t border-slate-100" />
 
-                <form action={signout} onSubmit={() => setIsMenuOpen(false)}>
-                  <button
-                    type="submit"
-                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
-                  >
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  disabled={isLoggingOut}
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-rose-600 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {isLoggingOut ? (
+                    <Loader2 className="h-4.5 w-4.5 animate-spin" />
+                  ) : (
                     <LogOut className="h-4.5 w-4.5" />
-                    <span>Abmelden</span>
-                  </button>
-                </form>
+                  )}
+                  <span>{isLoggingOut ? "Abmelden..." : "Abmelden"}</span>
+                </button>
               </div>
             </>
           )}
@@ -1302,7 +1327,10 @@ export default function ProfileView({
                                                   type="button"
                                                   onClick={() => {
                                                     setActiveCommentMenuId(null);
-                                                    handleDeleteComment(place.id, comment.id);
+                                                    setCommentDeleteConfirm({
+                                                      placeId: place.id,
+                                                      commentId: comment.id,
+                                                    });
                                                   }}
                                                   className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-rose-650 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
                                                 >
@@ -1538,6 +1566,23 @@ export default function ProfileView({
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={commentDeleteConfirm !== null}
+        title="Kommentar löschen?"
+        message="Möchtest du diesen Kommentar wirklich löschen? Dieser Schritt kann nicht rückgängig gemacht werden."
+        isLoading={
+          commentDeleteConfirm !== null &&
+          commentDeletingId === commentDeleteConfirm.commentId
+        }
+        onCancel={() => setCommentDeleteConfirm(null)}
+        onConfirm={() => {
+          if (!commentDeleteConfirm) return;
+          const { placeId, commentId } = commentDeleteConfirm;
+          setCommentDeleteConfirm(null);
+          void handleDeleteComment(placeId, commentId);
+        }}
+      />
     </div>
     </div>
   );

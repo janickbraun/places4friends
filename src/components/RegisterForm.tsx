@@ -1,10 +1,13 @@
 "use client";
 
 import React, { useState } from "react";
-import { signup } from "@/app/login/actions";
+import { useRouter } from "next/navigation";
 import { Mail, Lock, User, AtSign, ArrowRight, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+import { getSignupErrorMessage } from "@/lib/authErrors";
 
 export default function RegisterForm() {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -16,8 +19,17 @@ export default function RegisterForm() {
     setSuccess("");
 
     const formData = new FormData(e.currentTarget);
+    const email = (formData.get("email") as string)?.trim();
     const password = formData.get("password") as string;
     const confirmPassword = formData.get("confirmPassword") as string;
+    const fullName = (formData.get("fullName") as string)?.trim();
+    const username = (formData.get("username") as string)?.trim();
+
+    if (!email || !password) {
+      setError("Bitte E-Mail und Passwort eingeben.");
+      setLoading(false);
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwörter stimmen nicht überein.");
@@ -31,14 +43,34 @@ export default function RegisterForm() {
       return;
     }
 
-    const result = await signup(formData);
-    if (result?.error) {
-      setError(result.error);
+    const supabase = createClient();
+    const { data, error: authError } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName || undefined,
+          username: username || undefined,
+        },
+      },
+    });
+
+    if (authError) {
+      setError(getSignupErrorMessage(authError));
       setLoading(false);
-    } else if (result?.success) {
-      setSuccess(result.success);
-      setLoading(false);
+      return;
     }
+
+    if (!data.session) {
+      setSuccess(
+        "Konto erstellt! Bitte prüfe dein E-Mail-Postfach und bestätige deine Adresse."
+      );
+      setLoading(false);
+      return;
+    }
+
+    router.push("/");
+    router.refresh();
   };
 
   return (

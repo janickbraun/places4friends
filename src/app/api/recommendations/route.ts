@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { createApiClient, getApiUser } from "@/lib/supabase/apiAuth";
 
 interface RecommendationPayload {
   placeId: string | null;
@@ -42,10 +42,8 @@ function normalizeCategories(input: unknown): string[] {
 }
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getApiUser(request);
+  const supabase = await createApiClient(request);
 
   if (!user) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });

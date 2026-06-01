@@ -1,11 +1,28 @@
 "use client";
 
-import React, { useMemo, useState, useEffect, useRef } from "react";
+import React, { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import Map, { Marker, Popup } from "react-map-gl/mapbox";
 import { Search, Users, MapPin, Sparkles, Layers, Loader2, Bookmark, UserPlus, MessageCircle, X, Locate, SlidersHorizontal, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import {
+  FALLBACK_VIEWPORT,
+  GEOLOCATION_NOT_SUPPORTED_MESSAGE,
+  ZOOM_DETAIL,
+  debounce,
+  fetchApproximateGeoFromApi,
+  getCurrentUserPosition,
+  getGeolocationErrorMessage,
+  getGeolocationPermission,
+  locateUserPosition,
+  resolveInitialViewport,
+  saveViewport,
+  type MapViewport,
+} from "@/lib/mapViewport";
+import Toast from "@/components/Toast";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface UserProfile {
   id: string;
@@ -103,10 +120,10 @@ export default function MapViewContent() {
   const [friends, setFriends] = useState<UserProfile[]>([]);
   const [places, setPlaces] = useState<Place[]>([]);
 
-  const [viewState, setViewState] = useState({
-    longitude: 12.1016,
-    latitude: 49.0151,
-    zoom: 12,
+  const [viewState, setViewState] = useState<MapViewport>({
+    longitude: FALLBACK_VIEWPORT.longitude,
+    latitude: FALLBACK_VIEWPORT.latitude,
+    zoom: FALLBACK_VIEWPORT.zoom,
   });
 
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
@@ -126,6 +143,8 @@ export default function MapViewContent() {
   const [isFilterMenuOpen, setIsFilterMenuOpen] = useState(false);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
+  const [locationToast, setLocationToast] = useState<string | null>(null);
+  const [commentDeleteConfirmId, setCommentDeleteConfirmId] = useState<string | null>(null);
   const [comments, setComments] = useState<ActivityComment[]>([]);
   const [commentInput, setCommentInput] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
@@ -139,6 +158,15 @@ export default function MapViewContent() {
 
   const mapRef = useRef<any>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
+  const viewStateRef = useRef(viewState);
+  const viewportResolvedRef = useRef(false);
+  viewStateRef.current = viewState;
+
+  const persistViewportDebounced = useRef(
+    debounce((userId: string, viewport: MapViewport) => {
+      saveViewport(userId, viewport);
+    }, 500)
+  ).current;
 
   // Search bar states
   const [searchQuery, setSearchQuery] = useState("");
@@ -282,33 +310,7 @@ export default function MapViewContent() {
           .eq("user_id", authUser.id);
         setWishlistIds((wishlistEntries || []).map((w: any) => w.activity_id));
 
-        // Dynamically center map if overridden by search params, otherwise keep default (Regensburg)
-        const urlParams = new URLSearchParams(window.location.search);
-        const latParam = urlParams.get("lat");
-        const lngParam = urlParams.get("lng");
-        const placeIdParam = urlParams.get("placeId");
-
-        if (latParam && lngParam) {
-          const lat = parseFloat(latParam);
-          const lng = parseFloat(lngParam);
-          if (!isNaN(lat) && !isNaN(lng)) {
-            setViewState({
-              latitude: lat,
-              longitude: lng,
-              zoom: 15,
-            });
-          }
-        } else if (placeIdParam) {
-          const matched = loadedPlaces.find((p) => p.id === placeIdParam);
-          if (matched) {
-            setViewState({
-              latitude: matched.latitude,
-              longitude: matched.longitude,
-              zoom: 15,
-            });
-          }
-        }
-
+        const placeIdParam = new URLSearchParams(window.location.search).get("placeId");
         if (placeIdParam) {
           const matched = loadedPlaces.find((p) => p.id === placeIdParam);
           if (matched) {
@@ -324,6 +326,61 @@ export default function MapViewContent() {
 
     loadMapData();
   }, []);
+
+  useEffect(() => {
+    if (isLoading || viewportResolvedRef.current) return;
+
+    async function initViewport() {
+      try {
+        const viewport = await resolveInitialViewport({
+          userId: user?.id ?? null,
+          urlLat: searchParams.get("lat"),
+          urlLng: searchParams.get("lng"),
+          placeId: searchParams.get("placeId"),
+          places: places.map((p) => ({
+            id: p.id,
+            latitude: p.latitude,
+            longitude: p.longitude,
+          })),
+          fetchApproximateGeo: fetchApproximateGeoFromApi,
+        });
+
+        setViewState(viewport);
+        viewportResolvedRef.current = true;
+
+        const permission = await getGeolocationPermission();
+        if (permission === "granted") {
+          try {
+            const position = await getCurrentUserPosition();
+            setUserLocation(position);
+          } catch {
+            setUserLocation({
+              latitude: viewport.latitude,
+              longitude: viewport.longitude,
+            });
+          }
+        }
+      } catch (err) {
+        console.error("Error resolving initial map viewport:", err);
+        setViewState({ ...FALLBACK_VIEWPORT });
+        viewportResolvedRef.current = true;
+      }
+    }
+
+    initViewport();
+  }, [isLoading, user, places, searchParams]);
+
+  const handleMoveEnd = useCallback(() => {
+    if (!user?.id) return;
+    void getGeolocationPermission().then((permission) => {
+      if (permission === "granted") return;
+      persistViewportDebounced(user.id, {
+        latitude: viewStateRef.current.latitude,
+        longitude: viewStateRef.current.longitude,
+        zoom: viewStateRef.current.zoom,
+      });
+    });
+  }, [user, persistViewportDebounced]);
 
   // Handle zoom and select from URL search params reactively
   useEffect(() => {
@@ -341,7 +398,7 @@ export default function MapViewContent() {
           ...prev,
           latitude: lat,
           longitude: lng,
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
         }));
       }
     } else if (placeIdParam) {
@@ -351,7 +408,7 @@ export default function MapViewContent() {
           ...prev,
           latitude: matched.latitude,
           longitude: matched.longitude,
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
         }));
       }
     }
@@ -538,21 +595,19 @@ export default function MapViewContent() {
   };
 
   const handleLocateUser = () => {
-    if (!navigator.geolocation) {
-      alert("Geolokalisierung wird von deinem Browser nicht unterstützt.");
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationToast(GEOLOCATION_NOT_SUPPORTED_MESSAGE);
       return;
     }
 
     setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
+    void locateUserPosition()
+      .then(({ latitude, longitude }) => {
         setUserLocation({ latitude, longitude });
-        setIsLocating(false);
 
         mapRef.current?.flyTo({
           center: [longitude, latitude],
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
           duration: 1500,
         });
 
@@ -560,28 +615,16 @@ export default function MapViewContent() {
           ...prev,
           latitude,
           longitude,
-          zoom: 15,
+          zoom: ZOOM_DETAIL,
         }));
-      },
-      (error) => {
+      })
+      .catch((error) => {
         console.error("Error getting location:", error);
+        setLocationToast(getGeolocationErrorMessage(error));
+      })
+      .finally(() => {
         setIsLocating(false);
-        let message = "Dein Standort konnte nicht ermittelt werden.";
-        if (error.code === error.PERMISSION_DENIED) {
-          message = "Standortzugriff wurde verweigert. Bitte erlaube den Standortzugriff in deinem Browser.";
-        } else if (error.code === error.POSITION_UNAVAILABLE) {
-          message = "Standortinformationen sind derzeit nicht verfügbar.";
-        } else if (error.code === error.TIMEOUT) {
-          message = "Die Anfrage zur Ermittlung des Standorts hat das Zeitlimit überschritten.";
-        }
-        alert(message);
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000,
-        maximumAge: 0,
-      }
-    );
+      });
   };
 
   const toggleWishlist = async (activityId: string) => {
@@ -590,7 +633,7 @@ export default function MapViewContent() {
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
       try {
-        const response = await fetch(`/api/wishlist?activityId=${activityId}`, {
+        const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
         });
         if (!response.ok) throw new Error();
@@ -600,7 +643,7 @@ export default function MapViewContent() {
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
       try {
-        const response = await fetch("/api/wishlist", {
+        const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ activityId }),
@@ -770,7 +813,6 @@ export default function MapViewContent() {
 
   const handleDeleteComment = async (commentId: string) => {
     if (!selectedPlace) return;
-    if (!globalThis.confirm("Kommentar wirklich löschen?")) return;
 
     setCommentDeletingId(commentId);
     setCommentError(null);
@@ -815,9 +857,18 @@ export default function MapViewContent() {
         </div>
       )}
 
+      {locationToast && (
+        <div className="pointer-events-none absolute top-4 left-4 right-4 z-[25]">
+          <Toast message={locationToast} onDismiss={() => setLocationToast(null)} />
+        </div>
+      )}
+
       {/* Floating Search Bar */}
       {!isLoading && (
-        <div ref={searchContainerRef} className="absolute top-4 left-4 right-4 z-20">
+        <div
+          ref={searchContainerRef}
+          className={`absolute left-4 right-4 z-20 ${locationToast ? "top-[4.5rem]" : "top-4"}`}
+        >
           <div className="relative z-20 flex items-center bg-white/95 backdrop-blur-md rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.06)] px-4 py-3 transition-all duration-300 focus-within:ring-2 focus-within:ring-brand-green-700/10">
             <Search className="h-4 w-4 text-slate-400 mr-3.5 flex-shrink-0" />
             <input
@@ -1050,6 +1101,7 @@ export default function MapViewContent() {
           ref={mapRef}
           {...viewState}
           onMove={(evt) => setViewState(evt.viewState)}
+          onMoveEnd={handleMoveEnd}
           style={{ width: "100%", height: "100%" }}
           mapStyle={currentStyle}
           mapboxAccessToken={mapboxToken}
@@ -1374,7 +1426,7 @@ export default function MapViewContent() {
                                           type="button"
                                           onClick={() => {
                                             setActiveCommentMenuId(null);
-                                            handleDeleteComment(comment.id);
+                                            setCommentDeleteConfirmId(comment.id);
                                           }}
                                           className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-rose-650 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
                                         >
@@ -1469,6 +1521,20 @@ export default function MapViewContent() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={commentDeleteConfirmId !== null}
+        title="Kommentar löschen?"
+        message="Möchtest du diesen Kommentar wirklich löschen? Dieser Schritt kann nicht rückgängig gemacht werden."
+        isLoading={commentDeleteConfirmId !== null && commentDeletingId === commentDeleteConfirmId}
+        onCancel={() => setCommentDeleteConfirmId(null)}
+        onConfirm={() => {
+          if (!commentDeleteConfirmId) return;
+          const id = commentDeleteConfirmId;
+          setCommentDeleteConfirmId(null);
+          void handleDeleteComment(id);
+        }}
+      />
 
       {/* Lightbox Modal */}
       {activeImageUrl && (

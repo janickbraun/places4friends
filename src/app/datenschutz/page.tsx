@@ -111,6 +111,32 @@ export default function DatenschutzPage() {
             erfolgt auf Grundlage unseres berechtigten Interesses an einer komfortablen und ansprechenden Visualisierung von
             Empfehlungsorten (Art. 6 Abs. 1 lit. f DSGVO).
           </p>
+
+          <h4 className="font-semibold text-slate-800">Ungefährer Standort beim Kartenstart (Gäste)</h4>
+          <p>
+            Wenn Sie die App ohne Anmeldung nutzen und noch keinen Standortzugriff im Browser erlaubt haben, leiten wir aus Ihrer
+            IP-Adresse einen ungefähren Standort (in der Regel auf Stadt- oder Regionsebene) ab, um die Karte sinnvoll zu zentrieren.
+            Dazu wird Ihre IP-Adresse beim Aufruf unserer Server verarbeitet; eine dauerhafte Speicherung der IP-Adresse erfolgt
+            nicht. Die abgeleiteten Koordinaten werden nur vorübergehend genutzt und nicht in Ihrem Profil gespeichert.
+          </p>
+          <p>
+            Für die IP-basierte Standortschätzung können wir den Dienst ipapi.co (von Kloudend Inc.) einsetzen. Dabei wird Ihre
+            IP-Adresse an diesen Anbieter übermittelt. Wir schließen mit Drittanbietern, die personenbezogene Daten in unserem Auftrag
+            verarbeiten, Verträge zur Auftragsverarbeitung gemäß Art. 28 DSGVO ab, soweit dies erforderlich ist.
+          </p>
+          <p>
+            Rechtsgrundlage ist unser berechtigtes Interesse an einer nutzerfreundlichen initialen Kartenansicht (Art. 6 Abs. 1 lit. f
+            DSGVO). Einen genauen Standort (GPS) verarbeiten wir nur, wenn Sie dies ausdrücklich in Ihrem Browser erlauben.
+          </p>
+
+          <h4 className="font-semibold text-slate-800">Standortzugriff im Browser (GPS)</h4>
+          <p>
+            Wenn Sie in Ihrem Browser den Zugriff auf Ihren genauen Standort erlauben, nutzen wir diese Position, um die Karte auf
+            Ihre Umgebung zu zentrieren und Ihren Standort auf der Karte anzuzeigen. Die Verarbeitung erfolgt lokal in Ihrem Browser;
+            die Standortdaten werden nicht ohne Ihre weitere Nutzung der App an uns übermittelt, sofern Sie keinen Ort empfehlen oder
+            anderweitig standortbezogene Inhalte erstellen. Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die
+            Sie jederzeit in den Browser-Einstellungen widerrufen können.
+          </p>
         </section>
 
         {/* 5. Ihre Rechte */}

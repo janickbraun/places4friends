@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 import OnboardingOverlay from "@/components/OnboardingOverlay";
+import AuthProvider from "@/components/auth/AuthProvider";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -76,7 +77,7 @@ export default function RootLayout({
         <div className="relative flex flex-col w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-2xl h-full bg-white shadow-2xl sm:border-x sm:border-slate-100 overflow-hidden">
           {/* Main content scrollable wrapper */}
           <main className="flex-1 overflow-y-auto w-full no-scrollbar pb-4 bg-slate-50/20">
-            {children}
+            <AuthProvider>{children}</AuthProvider>
           </main>
 
           <OnboardingOverlay />

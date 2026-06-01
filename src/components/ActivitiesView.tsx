@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Users, Compass, Bookmark, MessageCircle, Loader2, X, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import ActivityCard from "./ActivityCard";
 import { createClient } from "@/lib/supabase/client";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import ConfirmDialog from "@/components/ConfirmDialog";
 
 interface FriendInfo {
   id: string;
@@ -66,6 +68,10 @@ export default function ActivitiesView({
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editingCommentInput, setEditingCommentInput] = useState("");
   const [commentDeletingId, setCommentDeletingId] = useState<string | null>(null);
+  const [commentDeleteConfirm, setCommentDeleteConfirm] = useState<{
+    activityId: string;
+    commentId: string;
+  } | null>(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -83,7 +89,7 @@ export default function ActivitiesView({
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
       try {
-        const response = await fetch(`/api/wishlist?activityId=${activityId}`, {
+        const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
         });
         if (!response.ok) throw new Error();
@@ -93,7 +99,7 @@ export default function ActivitiesView({
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
       try {
-        const response = await fetch("/api/wishlist", {
+        const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ activityId }),
@@ -255,8 +261,6 @@ export default function ActivitiesView({
   };
 
   const handleDeleteComment = async (activityId: string, commentId: string) => {
-    if (!globalThis.confirm("Kommentar wirklich löschen?")) return;
-
     setCommentDeletingId(commentId);
     setCommentError(null);
 
@@ -413,7 +417,10 @@ export default function ActivitiesView({
                                             type="button"
                                             onClick={() => {
                                               setActiveCommentMenuId(null);
-                                              handleDeleteComment(activity.id, comment.id);
+                                              setCommentDeleteConfirm({
+                                                activityId: activity.id,
+                                                commentId: comment.id,
+                                              });
                                             }}
                                             className="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-semibold text-rose-650 hover:bg-rose-50 active:scale-98 transition-all cursor-pointer text-left"
                                           >
@@ -507,6 +514,22 @@ export default function ActivitiesView({
         </div>
       </div>
 
+      <ConfirmDialog
+        open={commentDeleteConfirm !== null}
+        title="Kommentar löschen?"
+        message="Möchtest du diesen Kommentar wirklich löschen? Dieser Schritt kann nicht rückgängig gemacht werden."
+        isLoading={
+          commentDeleteConfirm !== null &&
+          commentDeletingId === commentDeleteConfirm.commentId
+        }
+        onCancel={() => setCommentDeleteConfirm(null)}
+        onConfirm={() => {
+          if (!commentDeleteConfirm) return;
+          const { activityId, commentId } = commentDeleteConfirm;
+          setCommentDeleteConfirm(null);
+          void handleDeleteComment(activityId, commentId);
+        }}
+      />
     </div>
   );
 }
