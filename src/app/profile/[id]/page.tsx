@@ -40,11 +40,13 @@ export default async function PublicProfilePage({
 }) {
   const { id: friendId } = await params;
   const sParams = await searchParams;
+  const inviteToken =
+    sParams.invite && sParams.invite !== "true" ? sParams.invite : null;
 
   return (
     <PublicProfilePageClient
       friendId={friendId}
-      isInvite={sParams.invite === "true"}
+      inviteToken={inviteToken}
     />
   );
 }

@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import { buildActivityCountMap } from "@/lib/activityCounts";
+import type { FriendInviteValidationError } from "@/lib/friendInvite";
 
 interface ActivityComment {
   id: string;
@@ -57,7 +58,7 @@ export default function PublicProfileView({
   initialWishlistedIds = [],
   initialFriendship = null,
   currentUserId,
-  isInvite = false,
+  inviteToken = null,
 }: {
   friend: User;
   friendsCount?: number;
@@ -65,7 +66,7 @@ export default function PublicProfileView({
   initialWishlistedIds?: string[];
   initialFriendship?: Friendship | null;
   currentUserId: string;
-  isInvite?: boolean;
+  inviteToken?: string | null;
 }) {
   const router = useRouter();
   const [wishlistIds, setWishlistIds] = useState<string[]>(initialWishlistedIds);
@@ -91,7 +92,57 @@ export default function PublicProfileView({
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
   const [saveCounts, setSaveCounts] = useState<Record<string, number>>({});
+  const [inviteValidation, setInviteValidation] = useState<
+    "loading" | "valid" | FriendInviteValidationError
+  >(inviteToken ? "loading" : "valid");
+  const [inviteErrorMessage, setInviteErrorMessage] = useState<string | null>(null);
   const supabase = createClient();
+
+  useEffect(() => {
+    if (!inviteToken) {
+      setInviteValidation("valid");
+      return;
+    }
+
+    let mounted = true;
+
+    async function validateInvite() {
+      const token = inviteToken;
+      if (!token) return;
+
+      try {
+        const params = new URLSearchParams({
+          token,
+          inviterId: friend.id,
+        });
+        const response = await fetch(
+          `/api/friendships/invite/validate?${params.toString()}`
+        );
+        const result = (await response.json()) as {
+          valid?: boolean;
+          error?: FriendInviteValidationError;
+        };
+
+        if (!mounted) return;
+
+        if (result.valid) {
+          setInviteValidation("valid");
+          return;
+        }
+
+        setInviteValidation(result.error ?? "not_found");
+      } catch {
+        if (mounted) {
+          setInviteValidation("not_found");
+        }
+      }
+    }
+
+    validateInvite();
+    return () => {
+      mounted = false;
+    };
+  }, [inviteToken, friend.id]);
 
   useEffect(() => {
     setFriendship(initialFriendship);
@@ -167,40 +218,36 @@ export default function PublicProfileView({
   };
 
   const handleAcceptInvite = async () => {
+    if (!inviteToken || inviteValidation !== "valid") {
+      return;
+    }
+
     setIsSubmittingFriendship(true);
+    setInviteErrorMessage(null);
+
     try {
       const response = await authenticatedFetch("/api/friendships/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ inviteeId: friend.id }),
+        body: JSON.stringify({ inviteeId: friend.id, inviteToken }),
       });
 
+      const result = (await response.json()) as {
+        success?: boolean;
+        friendship?: Friendship;
+        error?: string;
+        inviteError?: FriendInviteValidationError;
+      };
+
       if (!response.ok) {
-        throw new Error("Invite API call failed");
+        setInviteErrorMessage(result.error ?? "Einladung konnte nicht angenommen werden.");
+        if (result.inviteError) {
+          setInviteValidation(result.inviteError);
+        }
+        return;
       }
 
-      const result = await response.json();
-
-      if (result.fallback) {
-        // Fallback: use client-side supabase calls to immediately establish accepted friendship
-        if (friendship && friendship.status === "pending") {
-          await acceptFriendRequest();
-        } else if (!friendship) {
-          const { data, error } = await supabase
-            .from("friendships")
-            .insert({
-              sender_id: currentUserId,
-              receiver_id: friend.id,
-              status: "accepted",
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          setFriendship(data);
-          setLocalFriendsCount((prev) => prev + 1);
-        }
-      } else if (result.success && result.friendship) {
+      if (result.success && result.friendship) {
         const wasAccepted = friendship?.status === "accepted";
         setFriendship(result.friendship);
         if (result.friendship.status === "accepted" && !wasAccepted) {
@@ -209,33 +256,25 @@ export default function PublicProfileView({
       }
     } catch (err) {
       console.error("Error accepting invite:", err);
-      // Fallback: use client-side supabase calls to immediately establish accepted friendship
-      try {
-        if (friendship && friendship.status === "pending") {
-          await acceptFriendRequest();
-        } else if (!friendship) {
-          const { data, error } = await supabase
-            .from("friendships")
-            .insert({
-              sender_id: currentUserId,
-              receiver_id: friend.id,
-              status: "accepted",
-            })
-            .select()
-            .single();
-
-          if (error) throw error;
-          setFriendship(data);
-          setLocalFriendsCount((prev) => prev + 1);
-        }
-      } catch (fallbackErr) {
-        console.error("Fallback invite acceptance failed:", fallbackErr);
-      }
+      setInviteErrorMessage("Einladung konnte nicht angenommen werden.");
     } finally {
       setIsSubmittingFriendship(false);
       router.refresh();
     }
   };
+
+  const inviteInvalidMessage =
+    inviteValidation === "expired"
+      ? "Dieser Einladungslink ist abgelaufen. Bitte deinen Freund um einen neuen Link."
+      : inviteValidation === "max_uses"
+        ? "Dieser Einladungslink wurde bereits zu oft verwendet. Bitte deinen Freund um einen neuen Link."
+        : inviteValidation === "not_found"
+          ? "Dieser Einladungslink ist ungültig."
+          : null;
+
+  const showInviteAction =
+    !!inviteToken &&
+    (!friendship || friendship.status === "pending");
 
   const fetchFriends = async () => {
     setIsLoadingFriends(true);
@@ -585,44 +624,6 @@ export default function PublicProfileView({
       </header>
 
       <div className="flex-grow overflow-y-auto px-4 pt-6 page-transition">
-        {isInvite && (!friendship || friendship.status === "pending") && (
-          <div className="mb-6 rounded-2xl border border-brand-green-100 bg-gradient-to-br from-brand-green-50/40 to-brand-green-50 p-4 shadow-sm relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-300">
-            <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-green-100 text-brand-green-700 flex-shrink-0">
-                <Sparkles className="h-4 w-4 fill-brand-green-200" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <h3 className="text-xs font-bold text-slate-900">
-                  Einladung von {friend.name?.split(" ")[0] ?? "Freund"}
-                </h3>
-                <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
-                  Verbinde dich direkt, um eure Lieblingsorte gegenseitig auf der Karte zu sehen und Highlights zu teilen.
-                </p>
-                
-                <div className="mt-3.5">
-                  {isSubmittingFriendship ? (
-                    <button
-                      disabled
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-slate-100 px-4 py-2 text-[10px] font-bold text-slate-400"
-                    >
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Verbinden...</span>
-                    </button>
-                  ) : (
-                    <button
-                      onClick={handleAcceptInvite}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-green-700 hover:bg-brand-green-800 text-white font-bold px-4 py-2 cursor-pointer text-[10px] transition-all active:scale-[0.97] shadow-sm shadow-brand-green-700/10"
-                    >
-                      <UserPlus className="h-3.5 w-3.5" />
-                      <span>Einladung annehmen</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Profile Card Info */}
         <div className="flex flex-col items-center text-center">
           {/* Avatar */}
@@ -660,8 +661,61 @@ export default function PublicProfileView({
             </span>
           </button>
 
-          <div className="mt-4">
-            {isSubmittingFriendship ? (
+          <div className="mt-4 w-full max-w-sm mx-auto">
+            {showInviteAction ? (
+              <div className="rounded-2xl border border-brand-green-100 bg-gradient-to-br from-brand-green-50/40 to-brand-green-50 p-4 shadow-sm text-left animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-brand-green-100 text-brand-green-700 flex-shrink-0">
+                    <Sparkles className="h-4 w-4 fill-brand-green-200" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-xs font-bold text-slate-900">
+                      Einladung von {friend.name?.split(" ")[0] ?? "Freund"}
+                    </h3>
+                    {inviteValidation === "loading" ? (
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed flex items-center gap-1.5">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Einladung wird geprüft...
+                      </p>
+                    ) : inviteInvalidMessage ? (
+                      <p className="text-[11px] text-amber-700 mt-1 leading-relaxed">
+                        {inviteInvalidMessage}
+                      </p>
+                    ) : (
+                      <p className="text-[11px] text-slate-500 mt-1 leading-relaxed">
+                        Verbinde dich direkt, um eure Lieblingsorte gegenseitig auf der Karte zu sehen und Highlights zu teilen.
+                      </p>
+                    )}
+
+                    {inviteErrorMessage && (
+                      <p className="text-[11px] text-red-600 mt-2 leading-relaxed">
+                        {inviteErrorMessage}
+                      </p>
+                    )}
+
+                    <div className="mt-3.5 flex justify-center">
+                      {isSubmittingFriendship || inviteValidation === "loading" ? (
+                        <button
+                          disabled
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"
+                        >
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                          <span>Verbinden...</span>
+                        </button>
+                      ) : inviteValidation === "valid" ? (
+                        <button
+                          onClick={handleAcceptInvite}
+                          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-green-700 hover:bg-brand-green-800 text-white font-bold px-4.5 py-2 cursor-pointer text-xs transition-all active:scale-[0.97] shadow-sm shadow-brand-green-700/10"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          <span>Einladung annehmen</span>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : isSubmittingFriendship ? (
               <button
                 disabled
                 className="inline-flex items-center gap-2 rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-400"

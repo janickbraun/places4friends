@@ -35,6 +35,7 @@ import {
   type MapPlaceDetails,
   type MapPlacePin,
 } from "@/lib/mapPlaces";
+import { applyMapLabelLanguage, MAP_LABEL_LANGUAGE } from "@/lib/mapLanguage";
 import Toast from "@/components/Toast";
 import ConfirmDialog from "@/components/ConfirmDialog";
 
@@ -612,10 +613,17 @@ export default function MapViewContent() {
 
   const handleMapLoad = useCallback(() => {
     mapReadyRef.current = true;
+    const map = mapRef.current?.getMap?.();
+    applyMapLabelLanguage(map);
     if (!isSessionLoading && user) {
       void fetchViewportPins();
     }
   }, [isSessionLoading, user, fetchViewportPins]);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    applyMapLabelLanguage(map);
+  }, [currentStyle]);
 
   const handleMoveEnd = useCallback(() => {
     void fetchViewportPins();
@@ -1633,6 +1641,7 @@ export default function MapViewContent() {
           style={{ width: "100%", height: "100%" }}
           mapStyle={currentStyle}
           mapboxAccessToken={mapboxToken}
+          language={MAP_LABEL_LANGUAGE}
         >
           {clusteredPlaceGroups.map((group) => {
             if (group.places.length > 1) {

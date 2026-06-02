@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 import { getApiUser } from "@/lib/supabase/apiAuth";
+import { getSupabaseAdminClient } from "@/lib/supabase/admin";
 
 export async function POST(request: Request) {
   const user = await getApiUser(request);
@@ -9,16 +9,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nicht angemeldet." }, { status: 401 });
   }
 
-  let payload: { inviteeId?: string };
+  let payload: { inviteeId?: string; inviteToken?: string };
   try {
     payload = await request.json();
   } catch {
     return NextResponse.json({ error: "Ungültige Anfrage." }, { status: 400 });
   }
 
-  const { inviteeId } = payload;
-  if (!inviteeId) {
-    return NextResponse.json({ error: "Einladungs-ID fehlt." }, { status: 400 });
+  const { inviteeId, inviteToken } = payload;
+  if (!inviteeId || !inviteToken) {
+    return NextResponse.json(
+      { error: "Einladungstoken oder Einladungs-ID fehlt." },
+      { status: 400 }
+    );
   }
 
   if (inviteeId === user.id) {
@@ -28,30 +31,60 @@ export async function POST(request: Request) {
     );
   }
 
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceKey) {
-    // Fallback indicator so client can run client-side RLS insert (pending request)
-    console.warn("SUPABASE_SERVICE_ROLE_KEY missing, using client fallback");
-    return NextResponse.json({ fallback: true });
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    return NextResponse.json(
+      { error: "Einladung konnte nicht verarbeitet werden." },
+      { status: 503 }
+    );
   }
 
-  // Create admin client to bypass RLS for auto-approval
-  const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceKey,
-    {
-      auth: {
-        persistSession: false,
-        autoRefreshToken: false,
-      },
-    }
+  const { data: validationResult, error: validationError } = await supabaseAdmin.rpc(
+    "validate_friend_invite_link",
+    { p_token: inviteToken }
   );
 
-  // Check if a relationship already exists between the two users
+  if (validationError) {
+    console.error("Error validating friend invite link:", validationError);
+    return NextResponse.json(
+      { error: "Einladung konnte nicht verarbeitet werden." },
+      { status: 500 }
+    );
+  }
+
+  const validated = validationResult as {
+    valid?: boolean;
+    error?: string;
+    creator_id?: string;
+  };
+
+  if (!validated?.valid) {
+    const inviteError = validated?.error ?? "not_found";
+    const messages: Record<string, string> = {
+      not_found: "Dieser Einladungslink ist ungültig.",
+      expired: "Dieser Einladungslink ist abgelaufen.",
+      max_uses: "Dieser Einladungslink wurde bereits zu oft verwendet.",
+    };
+
+    return NextResponse.json(
+      { error: messages[inviteError] ?? messages.not_found, inviteError },
+      { status: 410 }
+    );
+  }
+
+  if (validated.creator_id !== inviteeId) {
+    return NextResponse.json(
+      { error: "Dieser Einladungslink passt nicht zu diesem Profil.", inviteError: "not_found" },
+      { status: 400 }
+    );
+  }
+
   const { data: existing, error: fetchError } = await supabaseAdmin
     .from("friendships")
     .select("*")
-    .or(`and(sender_id.eq.${user.id},receiver_id.eq.${inviteeId}),and(sender_id.eq.${inviteeId},receiver_id.eq.${user.id})`);
+    .or(
+      `and(sender_id.eq.${user.id},receiver_id.eq.${inviteeId}),and(sender_id.eq.${inviteeId},receiver_id.eq.${user.id})`
+    );
 
   if (fetchError) {
     console.error("Error checking existing friendship:", fetchError);
@@ -61,13 +94,14 @@ export async function POST(request: Request) {
     );
   }
 
+  let friendshipResult;
+
   if (existing && existing.length > 0) {
     const relation = existing[0];
     if (relation.status === "accepted") {
       return NextResponse.json({ success: true, friendship: relation });
     }
 
-    // If it is pending, update it to accepted (regardless of who sent it)
     const { data: updated, error: updateError } = await supabaseAdmin
       .from("friendships")
       .update({ status: "accepted" })
@@ -82,27 +116,40 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
-    return NextResponse.json({ success: true, friendship: updated });
+    friendshipResult = updated;
+  } else {
+    const { data: inserted, error: insertError } = await supabaseAdmin
+      .from("friendships")
+      .insert({
+        sender_id: inviteeId,
+        receiver_id: user.id,
+        status: "accepted",
+      })
+      .select()
+      .single();
+
+    if (insertError) {
+      console.error("Error inserting friendship:", insertError);
+      return NextResponse.json(
+        { error: "Verbindung konnte nicht hergestellt werden." },
+        { status: 500 }
+      );
+    }
+    friendshipResult = inserted;
   }
 
-  // If no relationship exists, auto-establish an accepted friendship
-  const { data: inserted, error: insertError } = await supabaseAdmin
-    .from("friendships")
-    .insert({
-      sender_id: inviteeId, // The person who shared the link
-      receiver_id: user.id, // The current user accepting the link
-      status: "accepted",   // Instantly accepted!
-    })
-    .select()
-    .single();
+  const { data: redeemResult, error: redeemError } = await supabaseAdmin.rpc(
+    "redeem_friend_invite_link",
+    { p_token: inviteToken }
+  );
 
-  if (insertError) {
-    console.error("Error inserting friendship:", insertError);
+  if (redeemError || !(redeemResult as { ok?: boolean })?.ok) {
+    console.error("Error redeeming friend invite link after friendship:", redeemError, redeemResult);
     return NextResponse.json(
-      { error: "Verbindung konnte nicht hergestellt werden." },
+      { error: "Einladung konnte nicht vollständig verarbeitet werden." },
       { status: 500 }
     );
   }
 
-  return NextResponse.json({ success: true, friendship: inserted });
+  return NextResponse.json({ success: true, friendship: friendshipResult });
 }

@@ -34,6 +34,7 @@ import {
   saveViewport,
   type MapViewport,
 } from "@/lib/mapViewport";
+import { applyMapLabelLanguage, MAP_LABEL_LANGUAGE } from "@/lib/mapLanguage";
 import Toast from "@/components/Toast";
 
 interface PlaceResult {
@@ -144,6 +145,16 @@ export default function RecommendView() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationToast, setLocationToast] = useState<string | null>(null);
+
+  const handleMapLoad = useCallback(() => {
+    const map = mapRef.current?.getMap?.();
+    applyMapLabelLanguage(map);
+  }, []);
+
+  useEffect(() => {
+    const map = mapRef.current?.getMap?.();
+    applyMapLabelLanguage(map);
+  }, [currentStyle]);
 
   const canSave = useMemo(() => placeName.trim().length > 0, [placeName]);
 
@@ -544,10 +555,12 @@ export default function RecommendView() {
             {...viewState}
             onMove={(evt) => setViewState(evt.viewState)}
             onMoveEnd={handleMoveEnd}
+            onLoad={handleMapLoad}
             onClick={handleMapClick}
             style={{ width: "100%", height: "100%" }}
             mapStyle={currentStyle}
             mapboxAccessToken={mapboxToken}
+            language={MAP_LABEL_LANGUAGE}
             cursor={formStep === "map" ? "crosshair" : "grab"}
           >
             {pinCoords && (

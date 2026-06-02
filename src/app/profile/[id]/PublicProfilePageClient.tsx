@@ -19,11 +19,11 @@ interface Friendship {
 
 function PublicProfileContent({
   friendId,
-  isInvite,
+  inviteToken,
   currentUserId,
 }: {
   friendId: string;
-  isInvite: boolean;
+  inviteToken: string | null;
   currentUserId: string;
 }) {
   const router = useRouter();
@@ -166,17 +166,17 @@ function PublicProfileContent({
       initialWishlistedIds={wishlistedIds}
       initialFriendship={friendship}
       currentUserId={currentUserId}
-      isInvite={isInvite}
+      inviteToken={inviteToken}
     />
   );
 }
 
 export default function PublicProfilePageClient({
   friendId,
-  isInvite,
+  inviteToken,
 }: {
   friendId: string;
-  isInvite: boolean;
+  inviteToken: string | null;
 }) {
   return (
     <AuthGate 
@@ -187,7 +187,7 @@ export default function PublicProfilePageClient({
       {(user: User) => (
         <PublicProfileContent
           friendId={friendId}
-          isInvite={isInvite}
+          inviteToken={inviteToken}
           currentUserId={user.id}
         />
       )}

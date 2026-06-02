@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Settings, Sparkles, LogOut, MapPin, Pencil, Trash2, X, Check, Bookmark, Loader2, Menu, Shield, FileText, MoreVertical, MessageCircle, Share2, Plus } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
+import { shareFriendInviteLink } from "@/lib/friendInvite";
 import { signOutClient } from "@/lib/auth/signOutClient";
 import ActivityCard from "./ActivityCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
@@ -106,31 +107,22 @@ export default function ProfileView({
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [avatarError, setAvatarError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isSharingInvite, setIsSharingInvite] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleShareInviteLink = async () => {
     if (!user) return;
-    const inviteUrl = `${window.location.origin}/profile/${user.id}?invite=true`;
-    const shareData = {
-      title: "places4friends",
-      text: "Lass uns auf places4friends befreundet sein, um unsere Lieblingsorte auf einer gemeinsamen Karte zu sehen!",
-      url: inviteUrl,
-    };
-
-    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-      } catch (err) {
-        console.error("Error sharing:", err);
-      }
-    } else {
-      try {
-        await navigator.clipboard.writeText(inviteUrl);
+    setIsSharingInvite(true);
+    try {
+      const result = await shareFriendInviteLink();
+      if (result === "copied") {
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
-      } catch (err) {
-        console.error("Failed to copy to clipboard:", err);
       }
+    } catch (err) {
+      console.error("Error creating invite link:", err);
+    } finally {
+      setIsSharingInvite(false);
     }
   };
   const [isCropOpen, setIsCropOpen] = useState(false);
@@ -1104,14 +1096,21 @@ export default function ProfileView({
 
                 <button
                   type="button"
+                  disabled={isSharingInvite}
                   onClick={async () => {
                     await handleShareInviteLink();
                     setTimeout(() => setIsMenuOpen(false), 800);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-98 transition-all cursor-pointer text-left"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 active:scale-98 transition-all cursor-pointer text-left disabled:opacity-60"
                 >
                   <Share2 className="h-4.5 w-4.5 text-slate-400" />
-                  <span>{copied ? "Link kopiert!" : "Freunde einladen"}</span>
+                  <span>
+                    {isSharingInvite
+                      ? "Link wird erstellt..."
+                      : copied
+                        ? "Link kopiert!"
+                        : "Freunde einladen"}
+                  </span>
                 </button>
 
                 <Link
