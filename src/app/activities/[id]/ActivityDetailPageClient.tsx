@@ -85,12 +85,18 @@ function ActivityDetailContent({
           ) as Friendship | undefined) ?? null;
       }
 
-      const { data: wishlistData } = await supabase
-        .from("wishlist")
-        .select("id")
-        .eq("user_id", currentUserId)
-        .eq("activity_id", activityId)
-        .maybeSingle();
+      const [{ data: wishlistData }, { count: saveCount }] = await Promise.all([
+        supabase
+          .from("wishlist")
+          .select("id")
+          .eq("user_id", currentUserId)
+          .eq("activity_id", activityId)
+          .maybeSingle(),
+        supabase
+          .from("wishlist")
+          .select("*", { count: "exact", head: true })
+          .eq("activity_id", activityId),
+      ]);
 
       const { data: commentsData } = await supabase
         .from("activity_comments")
@@ -173,6 +179,7 @@ function ActivityDetailContent({
         },
         initialComments: mappedComments,
         initialWishlisted: !!wishlistData,
+        initialSaveCount: saveCount ?? 0,
         initialFriendship,
         isOwner,
         currentUserId,

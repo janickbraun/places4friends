@@ -9,6 +9,7 @@ import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 import { signOutClient } from "@/lib/auth/signOutClient";
 import ActivityCard from "./ActivityCard";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { buildActivityCountMap } from "@/lib/activityCounts";
 
 interface User {
   id: string;
@@ -147,6 +148,7 @@ export default function ProfileView({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [commentsByPlace, setCommentsByPlace] = useState<Record<string, ActivityComment[]>>({});
+  const [saveCounts, setSaveCounts] = useState<Record<string, number>>({});
   const [commentInputs, setCommentInputs] = useState<Record<string, string>>({});
   const [commentErrors, setCommentErrors] = useState<Record<string, string | null>>({});
   const [loadingComments, setLoadingComments] = useState<Record<string, boolean>>({});
@@ -236,6 +238,10 @@ export default function ProfileView({
 
   const handleRemoveFromWishlist = async (activityId: string) => {
     setWishlistItems((prev) => prev.filter((item) => item.activityId !== activityId));
+    setSaveCounts((prev) => ({
+      ...prev,
+      [activityId]: Math.max(0, (prev[activityId] ?? 0) - 1),
+    }));
     try {
       const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
         method: "DELETE",
@@ -246,6 +252,10 @@ export default function ProfileView({
       if (itemToRestore) {
         setWishlistItems((prev) => [...prev, itemToRestore].sort((a, b) => b.timestamp.localeCompare(a.timestamp)));
       }
+      setSaveCounts((prev) => ({
+        ...prev,
+        [activityId]: (prev[activityId] ?? 0) + 1,
+      }));
     }
   };
 
@@ -449,6 +459,7 @@ export default function ProfileView({
   useEffect(() => {
     if (!user) {
       setCommentsByPlace({});
+      setSaveCounts({});
       return;
     }
 
@@ -461,26 +472,35 @@ export default function ProfileView({
 
     if (activityIds.length === 0) {
       setCommentsByPlace({});
+      setSaveCounts({});
       return;
     }
 
     let isActive = true;
 
     const loadComments = async () => {
-      const { data, error } = await supabase
-        .from("activity_comments")
-        .select(
-          "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name, avatar_url)"
-        )
-        .in("activity_id", activityIds)
-        .order("created_at", { ascending: true });
+      const [{ data, error }, { data: savesData }] = await Promise.all([
+        supabase
+          .from("activity_comments")
+          .select(
+            "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name, avatar_url)"
+          )
+          .in("activity_id", activityIds)
+          .order("created_at", { ascending: true }),
+        supabase.from("wishlist").select("activity_id").in("activity_id", activityIds),
+      ]);
 
       if (!isActive) return;
 
       if (error) {
         setCommentsByPlace({});
+        setSaveCounts({});
         return;
       }
+
+      setSaveCounts(
+        buildActivityCountMap((savesData || []) as { activity_id: string }[])
+      );
 
       const grouped: Record<string, ActivityComment[]> = {};
       (data || []).forEach((row: any) => {
@@ -523,6 +543,7 @@ export default function ProfileView({
     loadComments().catch(() => {
       if (!isActive) return;
       setCommentsByPlace({});
+      setSaveCounts({});
     });
 
     return () => {
@@ -1449,10 +1470,15 @@ export default function ProfileView({
                       <>
                         <button
                           onClick={() => handleRemoveFromWishlist(item.activityId)}
-                          className="flex items-center justify-center text-brand-green-700 active:scale-90 transition-all cursor-pointer p-1"
+                          className="flex items-center gap-1.5 justify-center text-brand-green-700 active:scale-90 transition-all cursor-pointer p-1"
                           title="Aus Wishlist entfernen"
                         >
                           <Bookmark className="h-5 w-5 transition-colors" fill="currentColor" />
+                          {(saveCounts[item.activityId] ?? 0) > 0 && (
+                            <span className="text-[11px] font-semibold select-none">
+                              {saveCounts[item.activityId]}
+                            </span>
+                          )}
                         </button>
                         <button
                           type="button"

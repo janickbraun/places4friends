@@ -40,6 +40,7 @@ interface ActivityItem {
   longitude?: number | null;
   imageUrls?: string[];
   commentCount?: number;
+  saveCount?: number;
 }
 
 export default function ActivitiesView({
@@ -61,6 +62,13 @@ export default function ActivitiesView({
     });
     return initialCounts;
   });
+  const [saveCounts, setSaveCounts] = useState<Record<string, number>>(() => {
+    const initialCounts: Record<string, number> = {};
+    activities.forEach((act) => {
+      initialCounts[act.id] = act.saveCount ?? 0;
+    });
+    return initialCounts;
+  });
   const [commentInput, setCommentInput] = useState("");
   const [commentError, setCommentError] = useState<string | null>(null);
   const [isCommentsLoading, setIsCommentsLoading] = useState(false);
@@ -79,11 +87,14 @@ export default function ActivitiesView({
   }, [initialWishlistedIds]);
 
   useEffect(() => {
-    const nextCounts: Record<string, number> = {};
+    const nextCommentCounts: Record<string, number> = {};
+    const nextSaveCounts: Record<string, number> = {};
     activities.forEach((act) => {
-      nextCounts[act.id] = act.commentCount ?? 0;
+      nextCommentCounts[act.id] = act.commentCount ?? 0;
+      nextSaveCounts[act.id] = act.saveCount ?? 0;
     });
-    setCommentCounts(nextCounts);
+    setCommentCounts(nextCommentCounts);
+    setSaveCounts(nextSaveCounts);
   }, [activities]);
 
   useEffect(() => {
@@ -92,10 +103,18 @@ export default function ActivitiesView({
     });
   }, [supabase]);
 
+  const adjustSaveCount = (activityId: string, delta: number) => {
+    setSaveCounts((prev) => ({
+      ...prev,
+      [activityId]: Math.max(0, (prev[activityId] ?? 0) + delta),
+    }));
+  };
+
   const toggleWishlist = async (activityId: string) => {
     const isSaved = wishlistIds.includes(activityId);
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+      adjustSaveCount(activityId, -1);
       try {
         const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
@@ -103,9 +122,11 @@ export default function ActivitiesView({
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => [...prev, activityId]);
+        adjustSaveCount(activityId, 1);
       }
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
+      adjustSaveCount(activityId, 1);
       try {
         const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
@@ -115,6 +136,7 @@ export default function ActivitiesView({
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+        adjustSaveCount(activityId, -1);
       }
     }
   };
@@ -314,7 +336,7 @@ export default function ActivitiesView({
                   <>
                     <button
                       onClick={() => toggleWishlist(activity.id)}
-                      className={`flex items-center justify-center active:scale-90 transition-all cursor-pointer p-1 ${
+                      className={`flex items-center gap-1.5 justify-center active:scale-90 transition-all cursor-pointer p-1 ${
                         wishlistIds.includes(activity.id)
                           ? "text-brand-green-700"
                           : "text-slate-500 hover:text-brand-green-800"
@@ -325,6 +347,11 @@ export default function ActivitiesView({
                         className="h-5 w-5 transition-colors"
                         fill={wishlistIds.includes(activity.id) ? "currentColor" : "none"}
                       />
+                      {(saveCounts[activity.id] ?? 0) > 0 && (
+                        <span className="text-[11px] font-semibold select-none">
+                          {saveCounts[activity.id]}
+                        </span>
+                      )}
                     </button>
                     <button
                       type="button"

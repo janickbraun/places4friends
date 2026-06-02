@@ -8,6 +8,7 @@ import ActivityCard from "./ActivityCard";
 import { createClient } from "@/lib/supabase/client";
 import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 import ConfirmDialog from "@/components/ConfirmDialog";
+import { buildActivityCountMap } from "@/lib/activityCounts";
 
 interface ActivityComment {
   id: string;
@@ -89,6 +90,7 @@ export default function PublicProfileView({
   } | null>(null);
   const [activeCommentMenuId, setActiveCommentMenuId] = useState<string | null>(null);
   const [expandedComments, setExpandedComments] = useState<Record<string, boolean>>({});
+  const [saveCounts, setSaveCounts] = useState<Record<string, number>>({});
   const supabase = createClient();
 
   useEffect(() => {
@@ -305,6 +307,7 @@ export default function PublicProfileView({
   useEffect(() => {
     if (places.length === 0) {
       setCommentsByPlace({});
+      setSaveCounts({});
       return;
     }
 
@@ -312,20 +315,28 @@ export default function PublicProfileView({
     let isActive = true;
 
     const loadComments = async () => {
-      const { data, error } = await supabase
-        .from("activity_comments")
-        .select(
-          "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name, avatar_url)"
-        )
-        .in("activity_id", activityIds)
-        .order("created_at", { ascending: true });
+      const [{ data, error }, { data: savesData }] = await Promise.all([
+        supabase
+          .from("activity_comments")
+          .select(
+            "id, activity_id, user_id, content, created_at, profiles:profiles!activity_comments_user_id_fkey(id, username, full_name, avatar_url)"
+          )
+          .in("activity_id", activityIds)
+          .order("created_at", { ascending: true }),
+        supabase.from("wishlist").select("activity_id").in("activity_id", activityIds),
+      ]);
 
       if (!isActive) return;
 
       if (error) {
         setCommentsByPlace({});
+        setSaveCounts({});
         return;
       }
+
+      setSaveCounts(
+        buildActivityCountMap((savesData || []) as { activity_id: string }[])
+      );
 
       const grouped: Record<string, ActivityComment[]> = {};
       (data || []).forEach((row: any) => {
@@ -368,6 +379,7 @@ export default function PublicProfileView({
     loadComments().catch(() => {
       if (!isActive) return;
       setCommentsByPlace({});
+      setSaveCounts({});
     });
 
     return () => {
@@ -516,10 +528,18 @@ export default function PublicProfileView({
     setCommentDeletingId(null);
   };
 
+  const adjustSaveCount = (activityId: string, delta: number) => {
+    setSaveCounts((prev) => ({
+      ...prev,
+      [activityId]: Math.max(0, (prev[activityId] ?? 0) + delta),
+    }));
+  };
+
   const toggleWishlist = async (activityId: string) => {
     const isSaved = wishlistIds.includes(activityId);
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+      adjustSaveCount(activityId, -1);
       try {
         const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
@@ -527,9 +547,11 @@ export default function PublicProfileView({
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => [...prev, activityId]);
+        adjustSaveCount(activityId, 1);
       }
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
+      adjustSaveCount(activityId, 1);
       try {
         const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
@@ -539,6 +561,7 @@ export default function PublicProfileView({
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+        adjustSaveCount(activityId, -1);
       }
     }
   };
@@ -710,7 +733,7 @@ export default function PublicProfileView({
                       <div className="flex items-center gap-1.5">
                         <button
                           onClick={() => toggleWishlist(place.id)}
-                          className={`flex items-center justify-center active:scale-90 transition-all cursor-pointer p-1 ${
+                          className={`flex items-center gap-1.5 justify-center active:scale-90 transition-all cursor-pointer p-1 ${
                             wishlistIds.includes(place.id)
                               ? "text-brand-green-700"
                               : "text-slate-500 hover:text-brand-green-800"
@@ -721,6 +744,11 @@ export default function PublicProfileView({
                             className="h-5 w-5 transition-colors"
                             fill={wishlistIds.includes(place.id) ? "currentColor" : "none"}
                           />
+                          {(saveCounts[place.id] ?? 0) > 0 && (
+                            <span className="text-[11px] font-semibold select-none">
+                              {saveCounts[place.id]}
+                            </span>
+                          )}
                         </button>
                         <button
                           type="button"

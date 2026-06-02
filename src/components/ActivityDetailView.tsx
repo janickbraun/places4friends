@@ -138,6 +138,7 @@ export default function ActivityDetailView({
   creator,
   initialComments,
   initialWishlisted,
+  initialSaveCount,
   initialFriendship,
   isOwner,
   currentUserId,
@@ -146,6 +147,7 @@ export default function ActivityDetailView({
   creator: User;
   initialComments: Comment[];
   initialWishlisted: boolean;
+  initialSaveCount: number;
   initialFriendship: Friendship | null;
   isOwner: boolean;
   currentUserId: string;
@@ -171,6 +173,7 @@ export default function ActivityDetailView({
 
   const [comments, setComments] = useState<Comment[]>(initialComments);
   const [isWishlisted, setIsWishlisted] = useState(initialWishlisted);
+  const [saveCount, setSaveCount] = useState(initialSaveCount);
   const [friendship, setFriendship] = useState<Friendship | null>(initialFriendship);
   
   // State for comments
@@ -433,6 +436,7 @@ export default function ActivityDetailView({
   const handleToggleWishlist = async () => {
     const nextState = !isWishlisted;
     setIsWishlisted(nextState);
+    setSaveCount((prev) => Math.max(0, prev + (nextState ? 1 : -1)));
     try {
       if (nextState) {
         const response = await authenticatedFetch("/api/wishlist", {
@@ -448,8 +452,8 @@ export default function ActivityDetailView({
         if (!response.ok) throw new Error();
       }
     } catch (err) {
-      // Revert state on error
       setIsWishlisted(!nextState);
+      setSaveCount((prev) => Math.max(0, prev + (nextState ? -1 : 1)));
     }
   };
 
@@ -829,7 +833,7 @@ export default function ActivityDetailView({
                   {/* Bookmark Button */}
                   <button
                     onClick={handleToggleWishlist}
-                    className={`flex items-center justify-center p-1 rounded-lg active:scale-90 transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 justify-center p-1 rounded-lg active:scale-90 transition-all cursor-pointer ${
                       isWishlisted
                         ? "text-brand-green-700"
                         : "text-slate-500 hover:text-brand-green-800"
@@ -840,6 +844,11 @@ export default function ActivityDetailView({
                       className="h-5 w-5 transition-colors"
                       fill={isWishlisted ? "currentColor" : "none"}
                     />
+                    {saveCount > 0 && (
+                      <span className="text-[11px] font-semibold select-none">
+                        {saveCount}
+                      </span>
+                    )}
                   </button>
 
                   {/* Comment Icon Indicator */}

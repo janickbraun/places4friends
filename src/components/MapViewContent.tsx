@@ -321,6 +321,7 @@ export default function MapViewContent() {
   const [isPlaceDetailLoading, setIsPlaceDetailLoading] = useState(false);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
   const [wishlistIds, setWishlistIds] = useState<string[]>([]);
+  const [selectedPlaceSaveCount, setSelectedPlaceSaveCount] = useState(0);
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   const [currentStyle, setCurrentStyle] = useState(() => {
     if (typeof window !== "undefined") {
@@ -1066,6 +1067,7 @@ export default function MapViewContent() {
     const isSaved = wishlistIds.includes(activityId);
     if (isSaved) {
       setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+      setSelectedPlaceSaveCount((prev) => Math.max(0, prev - 1));
       try {
         const response = await authenticatedFetch(`/api/wishlist?activityId=${activityId}`, {
           method: "DELETE",
@@ -1073,9 +1075,11 @@ export default function MapViewContent() {
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => [...prev, activityId]);
+        setSelectedPlaceSaveCount((prev) => prev + 1);
       }
     } else {
       setWishlistIds((prev) => [...prev, activityId]);
+      setSelectedPlaceSaveCount((prev) => prev + 1);
       try {
         const response = await authenticatedFetch("/api/wishlist", {
           method: "POST",
@@ -1085,6 +1089,7 @@ export default function MapViewContent() {
         if (!response.ok) throw new Error();
       } catch (err) {
         setWishlistIds((prev) => prev.filter((id) => id !== activityId));
+        setSelectedPlaceSaveCount((prev) => Math.max(0, prev - 1));
       }
     }
   };
@@ -1135,6 +1140,29 @@ export default function MapViewContent() {
 
     setIsCommentsLoading(false);
   };
+
+  useEffect(() => {
+    if (!selectedPlace) {
+      setSelectedPlaceSaveCount(0);
+      return;
+    }
+
+    let isActive = true;
+
+    supabase
+      .from("wishlist")
+      .select("*", { count: "exact", head: true })
+      .eq("activity_id", selectedPlace.id)
+      .then(({ count }) => {
+        if (isActive) {
+          setSelectedPlaceSaveCount(count ?? 0);
+        }
+      });
+
+    return () => {
+      isActive = false;
+    };
+  }, [selectedPlace?.id, supabase]);
 
   useEffect(() => {
     if (!selectedPlace || !user) {
@@ -1820,7 +1848,7 @@ export default function MapViewContent() {
                   {user && selectedPlace.userId !== user.id && (
                     <button
                       onClick={() => toggleWishlist(selectedPlace.id)}
-                      className={`flex items-center justify-center active:scale-90 transition-all cursor-pointer p-0.5 ${
+                      className={`flex items-center gap-1.5 justify-center active:scale-90 transition-all cursor-pointer p-0.5 ${
                         wishlistIds.includes(selectedPlace.id)
                           ? "text-brand-green-700"
                           : "text-slate-500 hover:text-brand-green-800"
@@ -1831,6 +1859,11 @@ export default function MapViewContent() {
                         className="h-4.5 w-4.5 transition-colors"
                         fill={wishlistIds.includes(selectedPlace.id) ? "currentColor" : "none"}
                       />
+                      {selectedPlaceSaveCount > 0 && (
+                        <span className="text-[11px] font-semibold select-none">
+                          {selectedPlaceSaveCount}
+                        </span>
+                      )}
                     </button>
                   )}
                   <Link

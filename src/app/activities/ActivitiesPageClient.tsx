@@ -6,6 +6,7 @@ import ActivitiesView from "@/components/ActivitiesView";
 import AuthGate from "@/components/auth/AuthGate";
 import { createClient } from "@/lib/supabase/client";
 import { formatTimestamp, getUserColorClass } from "@/lib/auth/placeFormatting";
+import { buildActivityCountMap } from "@/lib/activityCounts";
 
 import { ActivityCardSkeleton, ActivitiesSkeleton } from "@/components/ui/Skeleton";
 
@@ -66,15 +67,17 @@ function ActivitiesContent({ user }: { user: User }) {
 
         if (data) {
           const activityIds = data.map((act) => act.id);
-          const { data: commentsData } = await supabase
-            .from("activity_comments")
-            .select("activity_id")
-            .in("activity_id", activityIds);
+          const [{ data: commentsData }, { data: savesData }] = await Promise.all([
+            supabase.from("activity_comments").select("activity_id").in("activity_id", activityIds),
+            supabase.from("wishlist").select("activity_id").in("activity_id", activityIds),
+          ]);
 
-          const commentCountMap: Record<string, number> = {};
-          (commentsData || []).forEach((c: { activity_id: string }) => {
-            commentCountMap[c.activity_id] = (commentCountMap[c.activity_id] || 0) + 1;
-          });
+          const commentCountMap = buildActivityCountMap(
+            (commentsData || []) as { activity_id: string }[]
+          );
+          const saveCountMap = buildActivityCountMap(
+            (savesData || []) as { activity_id: string }[]
+          );
 
           loadedActivities = data.map((act) => {
             const friend = friends.find((f) => f.id === act.user_id);
@@ -101,6 +104,7 @@ function ActivitiesContent({ user }: { user: User }) {
               imageUrls: Array.isArray(act.image_urls) ? act.image_urls : [],
               timestamp: formatTimestamp(act.created_at),
               commentCount: commentCountMap[act.id] || 0,
+              saveCount: saveCountMap[act.id] || 0,
               friend: {
                 id: act.user_id,
                 name,
