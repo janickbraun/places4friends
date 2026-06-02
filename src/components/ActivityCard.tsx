@@ -29,6 +29,7 @@ export interface ActivityCardProps {
   editForm?: React.ReactNode;
   children?: React.ReactNode;
   imageUrls?: string[];
+  cardless?: boolean;
 }
 
 export default function ActivityCard({
@@ -47,6 +48,7 @@ export default function ActivityCard({
   editForm,
   children,
   imageUrls = [],
+  cardless = false,
 }: ActivityCardProps) {
   const [activeImageUrl, setActiveImageUrl] = useState<string | null>(null);
   const hasCoordinates =
@@ -56,7 +58,13 @@ export default function ActivityCard({
     longitude !== null;
 
   return (
-    <div className="group rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_30px_rgb(0,0,0,0.015)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300">
+    <div
+      className={
+        cardless
+          ? "group p-0"
+          : "group rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_8px_30px_rgb(0,0,0,0.015)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.03)] transition-all duration-300"
+      }
+    >
       {/* Main Content Area */}
       {isEditing && editForm ? (
         <div className="space-y-3">

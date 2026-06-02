@@ -10,10 +10,12 @@ import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 import {
   FALLBACK_VIEWPORT,
   GEOLOCATION_NOT_SUPPORTED_MESSAGE,
+  ZOOM_100KM,
   ZOOM_DETAIL,
   ZOOM_GERMANY_MIN,
   ZOOM_OVERVIEW_DEFAULT,
   debounce,
+  distanceKm,
   fetchApproximateGeoFromApi,
   getCurrentUserPosition,
   getGeolocationErrorMessage,
@@ -190,6 +192,13 @@ const CLUSTER_EXPAND_MAP_PADDING = {
   left: 56,
 };
 
+const LIVE_LOCATION_MAP_PADDING = {
+  top: 80,
+  right: 80,
+  bottom: 80,
+  left: 80,
+};
+
 // Extra top inset so the place popup clears search bar + friend filters.
 const SINGLE_PIN_SELECT_MAP_PADDING = {
   top: 320,
@@ -293,6 +302,31 @@ function getClusterBounds(
   return [
     [minLng, minLat],
     [maxLng, maxLat],
+  ];
+}
+
+function getSymmetricBoundsAroundCenter(
+  center: { latitude: number; longitude: number },
+  edgePoint: { latitude: number; longitude: number }
+): [[number, number], [number, number]] {
+  const mirrorPoint = {
+    latitude: center.latitude - (edgePoint.latitude - center.latitude),
+    longitude: center.longitude - (edgePoint.longitude - center.longitude),
+  };
+  return getGeoBounds([edgePoint, mirrorPoint]);
+}
+
+function getBoundsForRadiusKmAroundCenter(
+  center: { latitude: number; longitude: number },
+  radiusKm: number
+): [[number, number], [number, number]] {
+  const latDelta = radiusKm / 111.32;
+  const cosLat = Math.cos((center.latitude * Math.PI) / 180);
+  const safeCosLat = Math.max(0.2, Math.abs(cosLat));
+  const lngDelta = radiusKm / (111.32 * safeCosLat);
+  return [
+    [center.longitude - lngDelta, center.latitude - latDelta],
+    [center.longitude + lngDelta, center.latitude + latDelta],
   ];
 }
 
@@ -862,18 +896,56 @@ export default function MapViewContent() {
     void locateUserPosition()
       .then(({ latitude, longitude }) => {
         setUserLocation({ latitude, longitude });
+        const map = mapRef.current?.getMap?.() ?? mapRef.current;
+        if (!map) return;
 
-        mapRef.current?.flyTo({
-          center: [longitude, latitude],
-          zoom: ZOOM_DETAIL,
-          duration: 1500,
+        // Prefer showing at least one nearby recommendation (<=100 km) when available.
+        const nearestPinWithin100Km = filteredOverviewPins
+          .map((pin) => ({
+            pin,
+            distance: distanceKm({ latitude, longitude }, pin),
+          }))
+          .filter((entry) => entry.distance <= 100)
+          .sort((left, right) => left.distance - right.distance)[0]?.pin;
+
+        if (friends.length > 0 && nearestPinWithin100Km) {
+          const bounds = getSymmetricBoundsAroundCenter(
+            { latitude, longitude },
+            {
+              latitude: nearestPinWithin100Km.latitude,
+              longitude: nearestPinWithin100Km.longitude,
+            }
+          );
+
+          map.fitBounds(bounds, {
+            padding: LIVE_LOCATION_MAP_PADDING,
+            duration: 900,
+            essential: true,
+          });
+
+          setViewState((prev) => ({
+            ...prev,
+            latitude,
+            longitude,
+          }));
+          return;
+        }
+
+        const bounds100Km = getBoundsForRadiusKmAroundCenter(
+          { latitude, longitude },
+          100
+        );
+        map.fitBounds(bounds100Km, {
+          padding: LIVE_LOCATION_MAP_PADDING,
+          duration: 900,
+          essential: true,
         });
 
         setViewState((prev) => ({
           ...prev,
           latitude,
           longitude,
-          zoom: ZOOM_DETAIL,
+          zoom: ZOOM_100KM,
         }));
       })
       .catch((error) => {

@@ -613,7 +613,7 @@ export default function ActivityDetailView({
 
 
       {/* Main Content Area */}
-      <div className="flex-grow overflow-y-auto px-4 pt-6 page-transition max-w-lg mx-auto w-full">
+      <div className="flex-grow overflow-y-auto px-4 pt-6 page-transition mx-auto w-full">
         {!isFriend ? (
           /* Private Post UI */
           <div className="flex flex-col items-center justify-center py-16 text-center bg-white rounded-2xl border border-slate-100 p-6 shadow-sm">
@@ -676,6 +676,7 @@ export default function ActivityDetailView({
               categories={activityData.categories}
               timestamp={activityData.timestamp}
               imageUrls={activityData.imageUrls}
+              cardless
               friend={creator}
               isEditing={isEditing}
               editForm={
