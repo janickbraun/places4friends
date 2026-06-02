@@ -6,6 +6,10 @@ export interface MapViewport {
 
 export const ZOOM_100KM = 8;
 export const ZOOM_DETAIL = 15;
+/** Most zoomed-out level for the "Alle" overview (roughly all of Germany). */
+export const ZOOM_GERMANY_MIN = 5.8;
+/** Default regional zoom when fitting around the user without nearby pins. */
+export const ZOOM_OVERVIEW_DEFAULT = 8;
 
 /** Neutral Germany overview (not Regensburg-specific). */
 export const FALLBACK_VIEWPORT: MapViewport = {
@@ -311,6 +315,127 @@ export async function fetchApproximateGeoFromApi(): Promise<{
     return null;
   }
   return { latitude: data.latitude, longitude: data.longitude };
+}
+
+export function distanceKm(
+  a: { latitude: number; longitude: number },
+  b: { latitude: number; longitude: number }
+): number {
+  const earthRadiusKm = 6371;
+  const dLat = ((b.latitude - a.latitude) * Math.PI) / 180;
+  const dLon = ((b.longitude - a.longitude) * Math.PI) / 180;
+  const lat1 = (a.latitude * Math.PI) / 180;
+  const lat2 = (b.latitude * Math.PI) / 180;
+  const haversine =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+  return earthRadiusKm * 2 * Math.atan2(Math.sqrt(haversine), Math.sqrt(1 - haversine));
+}
+
+export function getGeoBounds(
+  points: Array<{ latitude: number; longitude: number }>
+): [[number, number], [number, number]] {
+  const lngs = points.map((point) => point.longitude);
+  const lats = points.map((point) => point.latitude);
+  let minLng = Math.min(...lngs);
+  let maxLng = Math.max(...lngs);
+  let minLat = Math.min(...lats);
+  let maxLat = Math.max(...lats);
+
+  if (minLng === maxLng) {
+    const lngPad = 0.02;
+    minLng -= lngPad;
+    maxLng += lngPad;
+  }
+  if (minLat === maxLat) {
+    const latPad = 0.02;
+    minLat -= latPad;
+    maxLat += latPad;
+  }
+
+  return [
+    [minLng, minLat],
+    [maxLng, maxLat],
+  ];
+}
+
+/**
+ * Picks pins closest to the user for overview fitting, expanding the search
+ * radius until enough recommendations are included or the max radius is reached.
+ */
+export function selectPlacesForOverview<T extends { latitude: number; longitude: number }>(
+  places: T[],
+  anchor: { latitude: number; longitude: number },
+  options?: {
+    minPlaces?: number;
+    maxPlaces?: number;
+    radiusStepsKm?: number[];
+  }
+): T[] {
+  const {
+    minPlaces = 2,
+    maxPlaces = 18,
+    radiusStepsKm = [50, 100, 180, 320],
+  } = options ?? {};
+
+  if (places.length === 0) return [];
+  if (places.length === 1) return places;
+
+  const ranked = places
+    .map((place) => ({ place, distanceKm: distanceKm(anchor, place) }))
+    .sort((a, b) => a.distanceKm - b.distanceKm);
+
+  for (const radius of radiusStepsKm) {
+    const inRadius = ranked
+      .filter((entry) => entry.distanceKm <= radius)
+      .map((entry) => entry.place);
+    if (inRadius.length >= minPlaces) {
+      return inRadius.slice(0, maxPlaces);
+    }
+  }
+
+  return ranked.slice(0, maxPlaces).map((entry) => entry.place);
+}
+
+export async function resolveOverviewAnchor(options: {
+  userLocation: { latitude: number; longitude: number } | null;
+  fallbackViewport: MapViewport;
+}): Promise<{ latitude: number; longitude: number }> {
+  if (options.userLocation) {
+    return options.userLocation;
+  }
+
+  const lastGeo = loadLastKnownGeo();
+  if (lastGeo) {
+    return lastGeo;
+  }
+
+  try {
+    const permission = await getGeolocationPermission();
+    if (permission === "granted") {
+      return await getCurrentUserPosition({
+        enableHighAccuracy: false,
+        timeout: 8_000,
+        maximumAge: 300_000,
+      });
+    }
+  } catch {
+    // try fallbacks below
+  }
+
+  try {
+    const approx = await fetchApproximateGeoFromApi();
+    if (approx) {
+      return approx;
+    }
+  } catch {
+    // use viewport fallback
+  }
+
+  return {
+    latitude: options.fallbackViewport.latitude,
+    longitude: options.fallbackViewport.longitude,
+  };
 }
 
 export function debounce<T extends (...args: never[]) => void>(

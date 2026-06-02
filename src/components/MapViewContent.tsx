@@ -11,14 +11,19 @@ import {
   FALLBACK_VIEWPORT,
   GEOLOCATION_NOT_SUPPORTED_MESSAGE,
   ZOOM_DETAIL,
+  ZOOM_GERMANY_MIN,
+  ZOOM_OVERVIEW_DEFAULT,
   debounce,
   fetchApproximateGeoFromApi,
   getCurrentUserPosition,
   getGeolocationErrorMessage,
   getGeolocationPermission,
+  getGeoBounds,
   locateUserPosition,
   resolveInitialViewport,
+  resolveOverviewAnchor,
   saveViewport,
+  selectPlacesForOverview,
   type MapViewport,
 } from "@/lib/mapViewport";
 import Toast from "@/components/Toast";
@@ -328,7 +333,7 @@ export default function MapViewContent() {
     zoom: FALLBACK_VIEWPORT.zoom,
   });
 
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [recommendationFilter, setRecommendationFilter] = useState<"all" | "must-see">("all");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
   const [selectedPlace, setSelectedPlace] = useState<Place | null>(null);
@@ -346,6 +351,7 @@ export default function MapViewContent() {
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [isLocating, setIsLocating] = useState(false);
   const [locationToast, setLocationToast] = useState<string | null>(null);
+  const [noPlacesToast, setNoPlacesToast] = useState<string | null>(null);
   const [commentDeleteConfirmId, setCommentDeleteConfirmId] = useState<string | null>(null);
   const [comments, setComments] = useState<ActivityComment[]>([]);
   const [commentInput, setCommentInput] = useState("");
@@ -633,8 +639,8 @@ export default function MapViewContent() {
 
   const filteredPlaces = useMemo(() => {
     let next = places;
-    if (selectedUsers.length > 0) {
-      next = next.filter((place) => selectedUsers.includes(place.userId));
+    if (selectedUserId) {
+      next = next.filter((place) => place.userId === selectedUserId);
     }
     if (recommendationFilter === "must-see") {
       next = next.filter((place) => place.isMustSee);
@@ -645,7 +651,7 @@ export default function MapViewContent() {
       );
     }
     return next;
-  }, [places, recommendationFilter, selectedCategories, selectedUsers]);
+  }, [places, recommendationFilter, selectedCategories, selectedUserId]);
 
   const clusteredPlaceGroups = useMemo<ClusteredPlaceGroup[]>(
     () => clusterPlacesByScreenOverlap(filteredPlaces, viewState.zoom),
@@ -902,6 +908,121 @@ export default function MapViewContent() {
     [viewState.zoom]
   );
 
+  const fitMapToUnclusteredPlaces = useCallback((placesToFit: Place[]) => {
+    if (placesToFit.length === 0) return;
+
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map) return;
+
+    const container = map.getContainer?.() as HTMLElement | undefined;
+    const mapWidth = container?.clientWidth ?? window.innerWidth;
+    const mapHeight = container?.clientHeight ?? window.innerHeight;
+    const bounds = getClusterBounds(placesToFit);
+    const centerLng = (bounds[0][0] + bounds[1][0]) / 2;
+    const centerLat = (bounds[0][1] + bounds[1][1]) / 2;
+
+    const targetZoom =
+      placesToFit.length === 1
+        ? Math.min(
+            CLUSTER_EXPAND_MAX_ZOOM,
+            Math.max(viewStateRef.current.zoom, ZOOM_DETAIL)
+          )
+        : findOptimalClusterExpandZoom(
+            placesToFit,
+            viewStateRef.current.zoom,
+            mapWidth,
+            mapHeight
+          );
+
+    map.fitBounds(bounds, {
+      padding: CLUSTER_EXPAND_MAP_PADDING,
+      maxZoom: targetZoom,
+      duration: 550,
+      essential: true,
+    });
+
+    setViewState((prev) => ({
+      ...prev,
+      latitude: centerLat,
+      longitude: centerLng,
+      zoom:
+        placesToFit.length === 1
+          ? Math.max(prev.zoom, targetZoom)
+          : Math.min(prev.zoom, targetZoom),
+    }));
+  }, []);
+
+  const fitMapToAllOverview = useCallback(async () => {
+    const map = mapRef.current?.getMap?.() ?? mapRef.current;
+    if (!map) return;
+
+    const anchor = await resolveOverviewAnchor({
+      userLocation,
+      fallbackViewport: viewStateRef.current,
+    });
+
+    const placesToFit = selectPlacesForOverview(filteredPlaces, anchor);
+    const container = map.getContainer?.() as HTMLElement | undefined;
+    const mapWidth = container?.clientWidth ?? window.innerWidth;
+    const mapHeight = container?.clientHeight ?? window.innerHeight;
+
+    if (placesToFit.length === 0) {
+      map.flyTo({
+        center: [anchor.longitude, anchor.latitude],
+        zoom: ZOOM_OVERVIEW_DEFAULT,
+        duration: 550,
+        essential: true,
+      });
+      setViewState((prev) => ({
+        ...prev,
+        latitude: anchor.latitude,
+        longitude: anchor.longitude,
+        zoom: ZOOM_OVERVIEW_DEFAULT,
+      }));
+      return;
+    }
+
+    const bounds = getGeoBounds([
+      { latitude: anchor.latitude, longitude: anchor.longitude },
+      ...placesToFit,
+    ]);
+    const centerLng = (bounds[0][0] + bounds[1][0]) / 2;
+    const centerLat = (bounds[0][1] + bounds[1][1]) / 2;
+
+    const targetZoom = Math.min(
+      placesToFit.length === 1
+        ? 11
+        : findOptimalClusterExpandZoom(
+            placesToFit,
+            viewStateRef.current.zoom,
+            mapWidth,
+            mapHeight
+          ),
+      12
+    );
+
+    map.fitBounds(bounds, {
+      padding: CLUSTER_EXPAND_MAP_PADDING,
+      minZoom: ZOOM_GERMANY_MIN,
+      maxZoom: targetZoom,
+      duration: 550,
+      essential: true,
+    });
+
+    setViewState((prev) => ({
+      ...prev,
+      latitude: centerLat,
+      longitude: centerLng,
+      zoom: targetZoom,
+    }));
+  }, [filteredPlaces, userLocation]);
+
+  const scheduleFitAllOverview = useCallback(() => {
+    requestAnimationFrame(() => {
+      void fitMapToAllOverview();
+    });
+  }, [fitMapToAllOverview]);
+
   const toggleWishlist = async (activityId: string) => {
     if (!user) return;
     const isSaved = wishlistIds.includes(activityId);
@@ -1006,12 +1127,43 @@ export default function MapViewContent() {
     setIsCommentsOpen(false);
   }, [selectedPlace?.id]);
 
-  const handleToggleUser = (userId: string) => {
-    setSelectedUsers((prev) =>
-      prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]
-    );
+  const handleSelectUser = (userId: string) => {
+    const isDeselectingFriend = selectedUserId === userId;
+    setSelectedUserId((prev) => {
+      const next = prev === userId ? null : userId;
+      if (next) {
+        const friendHasPlaces = places.some((place) => place.userId === next);
+        const friend = friends.find((f) => f.id === next);
+        if (!friendHasPlaces && friend) {
+          setNoPlacesToast(`${friend.name} hat noch keine Orte empfohlen.`);
+        } else {
+          setNoPlacesToast(null);
+        }
+      } else {
+        setNoPlacesToast(null);
+      }
+      return next;
+    });
     setSelectedPlace(null);
+    if (isDeselectingFriend) {
+      scheduleFitAllOverview();
+    }
   };
+
+  useEffect(() => {
+    if (!selectedUserId || filteredPlaces.length === 0) return;
+
+    const frame = requestAnimationFrame(() => {
+      fitMapToUnclusteredPlaces(filteredPlaces);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [
+    selectedUserId,
+    filteredPlaces,
+    fitMapToUnclusteredPlaces,
+    recommendationFilter,
+    selectedCategories,
+  ]);
 
   const handleAddComment = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -1318,11 +1470,13 @@ export default function MapViewContent() {
           <div className="absolute left-0 right-0 z-10 top-[72px] flex flex-nowrap gap-2 overflow-x-auto no-scrollbar px-4 py-1">
             <button
               onClick={() => {
-                setSelectedUsers([]);
+                setSelectedUserId(null);
                 setSelectedPlace(null);
+                setNoPlacesToast(null);
+                scheduleFitAllOverview();
               }}
               className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
-                selectedUsers.length === 0
+                selectedUserId === null
                   ? "bg-brand-green-800 border-brand-green-800 text-white"
                   : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
               }`}
@@ -1334,9 +1488,9 @@ export default function MapViewContent() {
             {friends.map((friend) => (
               <button
                 key={friend.id}
-                onClick={() => handleToggleUser(friend.id)}
+                onClick={() => handleSelectUser(friend.id)}
                 className={`flex flex-shrink-0 items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 cursor-pointer shadow-[0_4px_12px_rgba(0,0,0,0.03)] backdrop-blur-md active:scale-95 ${
-                  selectedUsers.includes(friend.id)
+                  selectedUserId === friend.id
                     ? "bg-brand-green-800 border-brand-green-800 text-white"
                     : "bg-white/95 border-slate-100 text-slate-700 hover:bg-slate-50"
                 }`}
@@ -1369,6 +1523,16 @@ export default function MapViewContent() {
         )
       )}
 
+      {noPlacesToast && !isLoading && user && friends.length > 0 && (
+        <div className="pointer-events-none absolute top-[112px] left-4 right-4 z-[15]">
+          <Toast
+            message={noPlacesToast}
+            variant="info"
+            autoHideMs={4000}
+            onDismiss={() => setNoPlacesToast(null)}
+          />
+        </div>
+      )}
 
       {/* Mapbox Map */}
       <div className="w-full h-full flex-1">
