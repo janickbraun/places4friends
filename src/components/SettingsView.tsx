@@ -185,14 +185,43 @@ export default function SettingsView({ user }: { user: UserProfile }) {
     event.preventDefault();
     if (!hasChanges) return;
 
+    const trimmedName = fullName.trim();
+    const trimmedUsername = username.trim();
+    const trimmedEmail = email.trim();
+
+    if (trimmedName.length > 50) {
+      setStatus("error");
+      setMessage("Der Name darf maximal 50 Zeichen lang sein.");
+      return;
+    }
+
+    if (trimmedUsername) {
+      if (trimmedUsername.length > 30) {
+        setStatus("error");
+        setMessage("Der Benutzername darf maximal 30 Zeichen lang sein.");
+        return;
+      }
+      if (!/^[a-zA-Z0-9_.]+$/.test(trimmedUsername)) {
+        setStatus("error");
+        setMessage("Der Benutzername darf nur Buchstaben, Zahlen, Unterstriche und Punkte enthalten.");
+        return;
+      }
+    }
+
+    if (trimmedEmail.length > 100) {
+      setStatus("error");
+      setMessage("Die E-Mail-Adresse darf maximal 100 Zeichen lang sein.");
+      return;
+    }
+
     setStatus("saving");
     setMessage(null);
 
     const supabase = createClient();
     const payload = {
       id: user.id,
-      full_name: fullName.trim() || null,
-      username: username.trim() || null,
+      full_name: trimmedName || null,
+      username: trimmedUsername || null,
       notifications_friend_requests: friendRequestNotifications,
     };
 
@@ -251,6 +280,12 @@ export default function SettingsView({ user }: { user: UserProfile }) {
     if (!oldPass || !pass || !confirm) {
       setPasswordStatus("error");
       setPasswordMessage("Bitte fülle alle Passwort-Felder aus.");
+      return;
+    }
+
+    if (oldPass.length > 100 || pass.length > 100 || confirm.length > 100) {
+      setPasswordStatus("error");
+      setPasswordMessage("Die Passwörter dürfen maximal 100 Zeichen lang sein.");
       return;
     }
 
@@ -347,21 +382,6 @@ export default function SettingsView({ user }: { user: UserProfile }) {
     }
   };
 
-  const initials = useMemo(() => {
-    if (fullName) {
-      return fullName
-        .split(" ")
-        .map((n) => n[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase();
-    }
-    if (username) {
-      return username.slice(0, 2).toUpperCase();
-    }
-    return email.slice(0, 2).toUpperCase();
-  }, [fullName, username, email]);
-
   return (
     <div className="flex min-h-screen flex-col bg-slate-50/50 pb-24 font-sans">
       <header className="sticky top-0 z-10 flex h-14 items-center justify-center border-b border-slate-100 bg-white px-4">
@@ -386,21 +406,6 @@ export default function SettingsView({ user }: { user: UserProfile }) {
             </div>
           </div>
         )}
-
-        {/* User Info Overview Card */}
-        <div className="flex flex-col items-center text-center p-6 rounded-3xl border border-slate-100 bg-white shadow-[0_8px_30px_rgb(0,0,0,0.03)]">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-tr from-brand-green-800 to-brand-green-500 text-white font-bold text-lg shadow-sm mb-3 select-none">
-            {initials}
-          </div>
-          <h2 className="text-base font-bold text-slate-950">{fullName || user.email}</h2>
-          {username && (
-            <p className="text-xs font-semibold text-brand-green-700 mt-0.5">@{username}</p>
-          )}
-          <p className="text-xs text-slate-400 mt-1.5 flex items-center gap-1">
-            <Mail className="h-3.5 w-3.5 shrink-0" />
-            {email}
-          </p>
-        </div>
 
         {/* Settings Navigation Menu */}
         <div className="space-y-4">
@@ -540,6 +545,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
                     placeholder="Dein Name"
+                    maxLength={50}
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -554,6 +560,9 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={username}
                     onChange={(event) => setUsername(event.target.value)}
                     placeholder="deinname"
+                    maxLength={30}
+                    pattern="[a-zA-Z0-9_\.]*"
+                    title="Der Benutzername darf nur Buchstaben, Zahlen, Unterstriche und Punkte enthalten."
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -568,6 +577,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={email}
                     onChange={(event) => setEmail(event.target.value)}
                     placeholder="name@domain.de"
+                    maxLength={100}
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -647,6 +657,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={oldPassword}
                     onChange={(event) => setOldPassword(event.target.value)}
                     placeholder="Dein aktuelles Passwort"
+                    maxLength={100}
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -661,6 +672,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={newPassword}
                     onChange={(event) => setNewPassword(event.target.value)}
                     placeholder="Mindestens 6 Zeichen"
+                    maxLength={100}
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>
@@ -675,6 +687,7 @@ export default function SettingsView({ user }: { user: UserProfile }) {
                     value={confirmPassword}
                     onChange={(event) => setConfirmPassword(event.target.value)}
                     placeholder="Passwort wiederholen"
+                    maxLength={100}
                     className="w-full bg-transparent text-sm font-medium text-slate-800 outline-none placeholder:text-slate-400"
                   />
                 </div>

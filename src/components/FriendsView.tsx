@@ -249,7 +249,7 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
     }
 
     const trimmed = query.trim();
-    if (!trimmed) {
+    if (!trimmed || trimmed.length > 100) {
       setSearchResults([]);
       return;
     }
@@ -825,6 +825,7 @@ export default function FriendsView({ currentUser }: FriendsViewProps) {
                   <input
                     type="text"
                     value={searchQuery}
+                    maxLength={100}
                     onChange={(e) => {
                       const val = e.target.value;
                       setSearchQuery(val);

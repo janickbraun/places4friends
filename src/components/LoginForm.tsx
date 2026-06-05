@@ -113,6 +113,7 @@ export default function LoginForm() {
               required
               autoComplete="email"
               placeholder="name@beispiel.de"
+              maxLength={100}
               className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
             />
           </div>
@@ -184,6 +185,7 @@ export default function LoginForm() {
             required
             autoComplete="email"
             placeholder="name@beispiel.de"
+            maxLength={100}
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
         </div>
@@ -218,6 +220,7 @@ export default function LoginForm() {
             required
             autoComplete="current-password"
             placeholder="Dein Passwort"
+            maxLength={100}
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
         </div>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getApiUser } from "@/lib/supabase/apiAuth";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isValidUuid, isValidInviteToken } from "@/lib/validation";
 
 export async function POST(request: Request) {
   const user = await getApiUser(request);
@@ -17,9 +18,9 @@ export async function POST(request: Request) {
   }
 
   const { inviteeId, inviteToken } = payload;
-  if (!inviteeId || !inviteToken) {
+  if (!inviteeId || !inviteToken || !isValidUuid(inviteeId) || !isValidInviteToken(inviteToken)) {
     return NextResponse.json(
-      { error: "Einladungstoken oder Einladungs-ID fehlt." },
+      { error: "Einladungstoken oder Einladungs-ID ist ungültig." },
       { status: 400 }
     );
   }

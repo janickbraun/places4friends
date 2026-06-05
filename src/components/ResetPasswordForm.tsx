@@ -32,6 +32,12 @@ export default function ResetPasswordForm() {
       return;
     }
 
+    if (pass.length > 100 || confirm.length > 100) {
+      setStatus("error");
+      setMessage("Die Passwörter dürfen maximal 100 Zeichen lang sein.");
+      return;
+    }
+
     if (pass !== confirm) {
       setStatus("error");
       setMessage("Die Passwörter stimmen nicht überein.");
@@ -79,6 +85,7 @@ export default function ResetPasswordForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Mindestens 6 Zeichen"
+            maxLength={100}
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
         </div>
@@ -102,6 +109,7 @@ export default function ResetPasswordForm() {
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             placeholder="Passwort wiederholen"
+            maxLength={100}
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
         </div>

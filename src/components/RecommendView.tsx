@@ -430,6 +430,31 @@ export default function RecommendView() {
       longitude: pinCoords?.lng ?? selectedSearchResult?.longitude ?? null,
     };
 
+    if (payload.placeName.length > 100) {
+      setFeedback({ type: "error", message: "Der Name des Ortes darf maximal 100 Zeichen lang sein." });
+      return;
+    }
+
+    if (payload.placeAddress && payload.placeAddress.length > 250) {
+      setFeedback({ type: "error", message: "Die Adresse darf maximal 250 Zeichen lang sein." });
+      return;
+    }
+
+    if (description.trim().length > 2000) {
+      setFeedback({ type: "error", message: "Die Beschreibung darf maximal 2000 Zeichen lang sein." });
+      return;
+    }
+
+    if (payload.latitude !== null && (payload.latitude < -90 || payload.latitude > 90)) {
+      setFeedback({ type: "error", message: "Ungültige geographische Breite." });
+      return;
+    }
+
+    if (payload.longitude !== null && (payload.longitude < -180 || payload.longitude > 180)) {
+      setFeedback({ type: "error", message: "Ungültige geographische Länge." });
+      return;
+    }
+
     setIsSaving(true);
     let uploadedUrls: string[] = [];
 
@@ -675,6 +700,7 @@ export default function RecommendView() {
             type="text"
             placeholder="Ort suchen oder auf Karte tippen..."
             value={searchQuery}
+            maxLength={100}
             onChange={(e) => {
               setSearchQuery(e.target.value);
               setShowSuggestions(true);
@@ -789,6 +815,7 @@ export default function RecommendView() {
                   onChange={(e) => setPlaceName(e.target.value)}
                   placeholder="Name des Ortes eingeben"
                   required
+                  maxLength={100}
                   className="w-full bg-transparent text-sm font-semibold text-slate-800 placeholder-slate-400 outline-none"
                 />
                 {placeName && (
@@ -815,6 +842,7 @@ export default function RecommendView() {
                   value={placeAddress}
                   onChange={(e) => setPlaceAddress(e.target.value)}
                   placeholder="Straße, Hausnummer, Ort"
+                  maxLength={250}
                   className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
                 />
                 {placeAddress && (
@@ -929,6 +957,7 @@ export default function RecommendView() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Was macht diesen Ort besonders?"
                   rows={3}
+                  maxLength={2000}
                   className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none resize-none"
                 />
               </div>

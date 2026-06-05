@@ -1,12 +1,13 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { isValidUuid, isValidInviteToken } from "@/lib/validation";
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const token = searchParams.get("token");
   const inviterId = searchParams.get("inviterId");
 
-  if (!token || !inviterId) {
+  if (!token || !inviterId || !isValidUuid(inviterId) || !isValidInviteToken(token)) {
     return NextResponse.json({ valid: false, error: "not_found" }, { status: 400 });
   }
 

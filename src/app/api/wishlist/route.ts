@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createApiClient, getApiUser } from "@/lib/supabase/apiAuth";
+import { isValidUuid } from "@/lib/validation";
 
 export async function GET(request: Request) {
   const user = await getApiUser(request);
@@ -106,8 +107,8 @@ export async function POST(request: Request) {
   }
 
   const { activityId } = payload;
-  if (!activityId) {
-    return NextResponse.json({ error: "Aktivitäts-ID fehlt." }, { status: 400 });
+  if (!activityId || !isValidUuid(activityId)) {
+    return NextResponse.json({ error: "Ungültiges Aktivitäts-ID-Format." }, { status: 400 });
   }
 
   const { data, error } = await supabase
@@ -150,8 +151,8 @@ export async function DELETE(request: Request) {
     }
   }
 
-  if (!activityId) {
-    return NextResponse.json({ error: "Aktivitäts-ID fehlt." }, { status: 400 });
+  if (!activityId || !isValidUuid(activityId)) {
+    return NextResponse.json({ error: "Ungültiges Aktivitäts-ID-Format." }, { status: 400 });
   }
 
   const { error } = await supabase

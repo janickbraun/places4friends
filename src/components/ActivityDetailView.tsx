@@ -287,6 +287,17 @@ export default function ActivityDetailView({
       return;
     }
 
+    if (trimmedName.length > 100) {
+      setActionError("Der Name des Ortes darf maximal 100 Zeichen lang sein.");
+      return;
+    }
+
+    const trimmedReview = editReview.trim();
+    if (trimmedReview.length > 2000) {
+      setActionError("Die Beschreibung darf maximal 2000 Zeichen lang sein.");
+      return;
+    }
+
     setIsSaving(true);
     setActionError(null);
     try {
@@ -463,6 +474,11 @@ export default function ActivityDetailView({
     const content = commentInput.trim();
     if (!content) return;
 
+    if (content.length > 1000) {
+      setCommentError("Kommentar darf maximal 1000 Zeichen lang sein.");
+      return;
+    }
+
     setIsCommentSaving(true);
     setCommentError(null);
 
@@ -485,6 +501,11 @@ export default function ActivityDetailView({
   const handleUpdateComment = async (commentId: string) => {
     const content = editingCommentInput.trim();
     if (!content) return;
+
+    if (content.length > 1000) {
+      setCommentError("Kommentar darf maximal 1000 Zeichen lang sein.");
+      return;
+    }
 
     setIsCommentSaving(true);
     setCommentError(null);
@@ -684,6 +705,7 @@ export default function ActivityDetailView({
                   <input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
+                    maxLength={100}
                     className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-800 outline-none focus:border-brand-green-500"
                   />
                   <button
@@ -721,6 +743,7 @@ export default function ActivityDetailView({
                     value={editReview}
                     onChange={(e) => setEditReview(e.target.value)}
                     rows={3}
+                    maxLength={2000}
                     className="mt-3 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700 outline-none focus:border-brand-green-500"
                   />
                   <div className="mt-3 space-y-2">
@@ -984,6 +1007,7 @@ export default function ActivityDetailView({
                               <input
                                 value={editingCommentInput}
                                 onChange={(e) => setEditingCommentInput(e.target.value)}
+                                maxLength={1000}
                                 className="flex-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] text-slate-700 outline-none focus:border-brand-green-500"
                                 autoFocus
                               />
@@ -1023,6 +1047,7 @@ export default function ActivityDetailView({
                     value={commentInput}
                     onChange={(e) => setCommentInput(e.target.value)}
                     placeholder="Kommentar schreiben..."
+                    maxLength={1000}
                     className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] text-slate-700 outline-none focus:border-brand-green-500"
                   />
                   <button

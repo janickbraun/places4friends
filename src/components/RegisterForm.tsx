@@ -36,6 +36,37 @@ export default function RegisterForm() {
       return;
     }
 
+    if (email.length > 100) {
+      setError("Die E-Mail-Adresse darf maximal 100 Zeichen lang sein.");
+      setLoading(false);
+      return;
+    }
+
+    if (fullName && fullName.length > 50) {
+      setError("Der vollständige Name darf maximal 50 Zeichen lang sein.");
+      setLoading(false);
+      return;
+    }
+
+    if (username) {
+      if (username.length > 30) {
+        setError("Der Benutzername darf maximal 30 Zeichen lang sein.");
+        setLoading(false);
+        return;
+      }
+      if (!/^[a-zA-Z0-9_.]+$/.test(username)) {
+        setError("Der Benutzername darf nur Buchstaben, Zahlen, Unterstriche und Punkte enthalten.");
+        setLoading(false);
+        return;
+      }
+    }
+
+    if (password.length > 100) {
+      setError("Das Passwort darf maximal 100 Zeichen lang sein.");
+      setLoading(false);
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError("Passwörter stimmen nicht überein.");
       setLoading(false);
@@ -95,6 +126,7 @@ export default function RegisterForm() {
             name="email"
             type="email"
             required
+            maxLength={100}
             placeholder="name@beispiel.de"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
@@ -115,6 +147,7 @@ export default function RegisterForm() {
             id="fullName"
             name="fullName"
             type="text"
+            maxLength={50}
             placeholder="Max Mustermann"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
@@ -135,6 +168,9 @@ export default function RegisterForm() {
             id="username"
             name="username"
             type="text"
+            maxLength={30}
+            pattern="[a-zA-Z0-9_\.]*"
+            title="Der Benutzername darf nur Buchstaben, Zahlen, Unterstriche und Punkte enthalten."
             placeholder="maxmuster"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
@@ -156,6 +192,7 @@ export default function RegisterForm() {
             name="password"
             type="password"
             required
+            maxLength={100}
             placeholder="Mind. 6 Zeichen"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />
@@ -177,6 +214,7 @@ export default function RegisterForm() {
             name="confirmPassword"
             type="password"
             required
+            maxLength={100}
             placeholder="Passwort erneut eingeben"
             className="w-full bg-transparent text-sm text-slate-800 placeholder-slate-400 outline-none"
           />

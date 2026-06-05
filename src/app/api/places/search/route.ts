@@ -21,9 +21,20 @@ const parseNumber = (value: string | null) => {
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
-  const query = searchParams.get("query")?.trim() ?? "";
+  let query = searchParams.get("query")?.trim() ?? "";
+  if (query.length > 200) {
+    query = query.substring(0, 200);
+  }
   const lat = parseNumber(searchParams.get("lat"));
   const lng = parseNumber(searchParams.get("lng"));
+
+  if (lat !== null && (lat < -90 || lat > 90 || Number.isNaN(lat))) {
+    return NextResponse.json({ error: "Ungültige geographische Breite." }, { status: 400 });
+  }
+  if (lng !== null && (lng < -180 || lng > 180 || Number.isNaN(lng))) {
+    return NextResponse.json({ error: "Ungültige geographische Länge." }, { status: 400 });
+  }
+
   const mode = searchParams.get("mode") ?? "anywhere";
   const radius = Math.min(
     Math.max(Number.parseInt(searchParams.get("radius") ?? "3000", 10), 500),

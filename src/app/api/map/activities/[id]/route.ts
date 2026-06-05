@@ -6,6 +6,7 @@ import {
   mergeMapPlace,
 } from "@/lib/mapPlaces";
 import { getNetworkUserIds, loadProfileMap, profileInfoForUser } from "@/lib/mapNetwork";
+import { isValidUuid } from "@/lib/validation";
 
 interface RouteContext {
   params: Promise<{ id: string }>;
@@ -18,8 +19,8 @@ export async function GET(request: Request, context: RouteContext) {
   }
 
   const { id } = await context.params;
-  if (!id) {
-    return NextResponse.json({ error: "Aktivitäts-ID fehlt." }, { status: 400 });
+  if (!id || !isValidUuid(id)) {
+    return NextResponse.json({ error: "Ungültiges Aktivitäts-ID-Format." }, { status: 400 });
   }
 
   try {
