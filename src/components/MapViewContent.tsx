@@ -398,6 +398,7 @@ export default function MapViewContent() {
   const placeDetailsCacheRef = useRef(new globalThis.Map<string, MapPlaceDetails>());
   const activePreloadsRef = useRef(new globalThis.Map<string, Promise<MapPlaceDetails>>());
   const deepLinkPlaceRef = useRef<MapPlace | null>(null);
+  const lastSelectedCategoriesStr = useRef("");
   viewStateRef.current = viewState;
 
   const mapFilterParams = useMemo(() => {
@@ -419,6 +420,8 @@ export default function MapViewContent() {
       }),
     [overviewPins, selectedUserId, recommendationFilter, selectedCategories]
   );
+
+  const hasActiveFilters = recommendationFilter !== "all" || selectedCategories.length > 0;
 
   const persistViewportDebounced = useRef(
     debounce((userId: string, viewport: MapViewport) => {
@@ -1423,6 +1426,97 @@ export default function MapViewContent() {
     selectedCategories,
   ]);
 
+  useEffect(() => {
+    const currentCategoriesStr = [...selectedCategories].sort().join(",");
+    const hasChanged = currentCategoriesStr !== lastSelectedCategoriesStr.current;
+    lastSelectedCategoriesStr.current = currentCategoriesStr;
+
+    if (selectedCategories.length === 0 || !hasChanged || filteredOverviewPins.length === 0) {
+      return;
+    }
+
+    const fitCategoryMap = async () => {
+      const map = mapRef.current?.getMap?.() ?? mapRef.current;
+      if (!map) return;
+
+      const anchor = await resolveOverviewAnchor({
+        userLocation,
+        fallbackViewport: viewStateRef.current,
+      });
+
+      const container = map.getContainer?.() as HTMLElement | undefined;
+      const mapWidth = container?.clientWidth ?? window.innerWidth;
+      const mapHeight = container?.clientHeight ?? window.innerHeight;
+
+      // Sort matching pins by distance to the anchor (user location or current view center)
+      const ranked = filteredOverviewPins
+        .map((pin) => ({
+          pin,
+          distance: distanceKm(anchor, pin),
+        }))
+        .sort((a, b) => a.distance - b.distance);
+
+      // Start with the closest pin
+      const placesToFit: MapOverviewPin[] = [ranked[0].pin];
+      const thresholdZoom = 11;
+
+      // Add subsequent pins only if they fit in the viewport at thresholdZoom (11)
+      for (let i = 1; i < ranked.length; i++) {
+        const candidate = [...placesToFit, ranked[i].pin];
+        if (
+          placesFitInViewport(
+            candidate,
+            thresholdZoom,
+            mapWidth,
+            mapHeight,
+            CLUSTER_EXPAND_MAP_PADDING
+          )
+        ) {
+          placesToFit.push(ranked[i].pin);
+        } else {
+          // Since it's sorted by distance, stop adding as soon as they don't fit
+          break;
+        }
+      }
+
+      const bounds = getGeoBounds(placesToFit);
+      const centerLng = (bounds[0][0] + bounds[1][0]) / 2;
+      const centerLat = (bounds[0][1] + bounds[1][1]) / 2;
+
+      let targetZoom = 13;
+      if (placesToFit.length > 1) {
+        targetZoom = findOptimalClusterExpandZoom(
+          placesToFit,
+          viewStateRef.current.zoom,
+          mapWidth,
+          mapHeight
+        );
+        if (targetZoom > 14) {
+          targetZoom = 14;
+        }
+      }
+
+      map.fitBounds(bounds, {
+        padding: CLUSTER_EXPAND_MAP_PADDING,
+        maxZoom: targetZoom,
+        duration: 550,
+        essential: true,
+      });
+
+      setViewState((prev) => ({
+        ...prev,
+        latitude: centerLat,
+        longitude: centerLng,
+        zoom: targetZoom,
+      }));
+    };
+
+    const frame = requestAnimationFrame(() => {
+      void fitCategoryMap();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [selectedCategories, filteredOverviewPins, userLocation]);
+
   const handleAddComment = async (event: React.FormEvent) => {
     event.preventDefault();
     if (!user || !selectedPlace) return;
@@ -1579,13 +1673,16 @@ export default function MapViewContent() {
             />
             <button
               onClick={() => setIsFilterMenuOpen((prev) => !prev)}
-              className={`ml-2 flex h-7 w-7 items-center justify-center rounded-full border border-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all flex-shrink-0 cursor-pointer ${
+              className={`relative ml-2 flex h-7 w-7 items-center justify-center rounded-full border border-slate-100 text-slate-500 hover:text-slate-700 hover:bg-slate-50 transition-all flex-shrink-0 cursor-pointer ${
                 isFilterMenuOpen ? "ring-2 ring-brand-green-700/20 text-brand-green-800" : ""
               }`}
               title="Filter"
               aria-label="Filter"
             >
               <SlidersHorizontal className="h-3.5 w-3.5" />
+              {hasActiveFilters && (
+                <span className="absolute top-1 right-1 flex h-1.5 w-1.5 rounded-full bg-brand-green-700 ring-1 ring-white" />
+              )}
             </button>
             {searchQuery && (
               <button
