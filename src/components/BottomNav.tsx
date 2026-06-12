@@ -5,10 +5,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { MapPin, Plus, User, Activity, Users } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { useAuth } from "@/components/auth/AuthProvider";
 
 export default function BottomNav() {
   const pathname = usePathname();
   const supabase = createClient();
+  const { emailVerified } = useAuth();
   const [pendingCount, setPendingCount] = useState(0);
   const [unseenActivitiesCount, setUnseenActivitiesCount] = useState(0);
 
@@ -251,7 +253,14 @@ export default function BottomNav() {
 
         {/* Profile Tab */}
         <Link href="/profile" className={getTabClass("/profile")}>
-          <User className={`h-5 w-5 transition-all duration-200 ${isTabActive("/profile") ? "stroke-[2.6]" : "stroke-[2]"}`} />
+          <div className="relative">
+            <User className={`h-5 w-5 transition-all duration-200 ${isTabActive("/profile") ? "stroke-[2.6]" : "stroke-[2]"}`} />
+            {!emailVerified && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-green-600 text-[8px] font-extrabold text-white ring-2 ring-white">
+                1
+              </span>
+            )}
+          </div>
           <span className="text-[10px] tracking-wide">Profil</span>
         </Link>
       </div>

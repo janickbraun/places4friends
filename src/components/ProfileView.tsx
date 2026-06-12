@@ -13,6 +13,7 @@ import ConfirmDialog from "@/components/ConfirmDialog";
 import { buildActivityCountMap } from "@/lib/activityCounts";
 import LegalFooter from "./LegalFooter";
 import { getAvatarUrl } from "@/lib/avatar";
+import VerificationBanner from "./VerificationBanner";
 
 interface User {
   id: string;
@@ -1156,6 +1157,8 @@ export default function ProfileView({
           )}
         </div>
       </header>
+
+      <VerificationBanner />
 
       <div className="flex-grow overflow-y-auto px-4 pt-6 page-transition">
         {/* Profile Card Info */}

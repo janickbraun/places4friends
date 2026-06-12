@@ -110,6 +110,15 @@ export default function RegisterForm() {
       return;
     }
 
+    // Fire-and-forget: send verification email via plain fetch (not a server action, so it won't block Next.js transitions)
+    fetch("/api/verify-email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, userId: data.user?.id }),
+    }).catch((err) => {
+      console.error("Error triggering verification email:", err);
+    });
+
     if (!data.session) {
       setSuccess(
         "Konto erstellt! Bitte prüfe dein E-Mail-Postfach und bestätige deine Adresse."
