@@ -1,14 +1,26 @@
 import { NextResponse } from "next/server";
 import { getSupabaseAdminClient } from "@/lib/supabase/admin";
+import { getApiUser } from "@/lib/supabase/apiAuth";
 import { sendVerificationEmail } from "@/lib/email";
 
 export async function POST(request: Request) {
   try {
-    const { email, userId } = await request.json();
-
-    if (!email || !userId) {
+    // Require authentication -- only logged-in users can trigger verification emails
+    const user = await getApiUser(request);
+    if (!user) {
       return NextResponse.json(
-        { error: "E-Mail und Benutzer-ID sind erforderlich." },
+        { error: "Nicht angemeldet." },
+        { status: 401 }
+      );
+    }
+
+    // Use the authenticated user's own ID and email (ignore body params)
+    const userId = user.id;
+    const email = user.email;
+
+    if (!email) {
+      return NextResponse.json(
+        { error: "Keine E-Mail-Adresse mit dem Konto verknüpft." },
         { status: 400 }
       );
     }

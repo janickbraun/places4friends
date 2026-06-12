@@ -1,3 +1,13 @@
+/** Escapes special HTML characters to prevent injection in email templates. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendVerificationEmail(email: string, token: string, fullName?: string) {
   const apiKey = process.env.RESEND_API_KEY;
   if (!apiKey) {
@@ -9,14 +19,14 @@ export async function sendVerificationEmail(email: string, token: string, fullNa
     ? `https://${process.env.NEXT_PUBLIC_SITE_URL}`
     : "http://localhost:3000";
 
-  const verificationUrl = `${baseUrl}/auth/verify-email?token=${token}`;
+  const verificationUrl = `${baseUrl}/auth/verify-email?token=${encodeURIComponent(token)}`;
   
   // Use onboarding@resend.dev as fallback sender if you haven't verified a custom domain on Resend
   const fromEmail = process.env.NEXT_PUBLIC_SITE_URL
     ? "places4friends <noreply@places4friends.com>"
     : "places4friends <onboarding@resend.dev>";
 
-  const recipientName = fullName || "Freund/in";
+  const recipientName = escapeHtml(fullName || "Freund/in");
   
   const htmlContent = `
     <!DOCTYPE html>

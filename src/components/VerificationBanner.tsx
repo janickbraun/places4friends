@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { useAuth } from "./auth/AuthProvider";
 import { Mail, AlertCircle, Loader2, CheckCircle } from "lucide-react";
+import { authenticatedFetch } from "@/lib/auth/authenticatedFetch";
 
 export default function VerificationBanner() {
   const { user, loading, emailVerified } = useAuth();
@@ -22,10 +23,10 @@ export default function VerificationBanner() {
     setSuccess("");
 
     try {
-      const res = await fetch("/api/verify-email/send", {
+      const res = await authenticatedFetch("/api/verify-email/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: user.email, userId: user.id }),
+        body: JSON.stringify({}),
       });
       const data = await res.json();
       if (!res.ok || data.error) {

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Mail, Lock, User, AtSign, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getSignupErrorMessage } from "@/lib/authErrors";
+import { sendVerificationEmailAction } from "@/app/login/actions";
 
 export default function RegisterForm() {
   const router = useRouter();
@@ -110,12 +111,8 @@ export default function RegisterForm() {
       return;
     }
 
-    // Fire-and-forget: send verification email via plain fetch (not a server action, so it won't block Next.js transitions)
-    fetch("/api/verify-email/send", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, userId: data.user?.id }),
-    }).catch((err) => {
+    // Fire-and-forget: send verification email via authenticated server action
+    sendVerificationEmailAction(email, data.user?.id).catch((err) => {
       console.error("Error triggering verification email:", err);
     });
 

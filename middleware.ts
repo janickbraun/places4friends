@@ -55,7 +55,7 @@ function getIp(request: NextRequest): string {
   return "127.0.0.1";
 }
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
