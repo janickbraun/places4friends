@@ -57,6 +57,17 @@ export default function ActivityCard({
     longitude !== undefined &&
     longitude !== null;
 
+  const mapsUrl = (() => {
+    if (hasCoordinates) {
+      const isCoordsPattern = /^-?\d+(\.\d+)?[,\s]+-?\d+(\.\d+)?$/.test(placeName.trim());
+      if (placeName.trim() && !isCoordsPattern) {
+        return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${placeName}, ${latitude},${longitude}`)}`;
+      }
+      return `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    }
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(placeName)}`;
+  })();
+
   return (
     <div
       className={
@@ -208,7 +219,7 @@ export default function ActivityCard({
               {bottomLeftActions}
             </div>
             <a 
-              href={hasCoordinates ? `https://maps.google.com/?q=${latitude},${longitude}` : `https://maps.google.com/?q=${encodeURIComponent(placeName)}`}
+              href={mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-[11px] font-bold text-slate-700 hover:bg-slate-200 transition-colors"

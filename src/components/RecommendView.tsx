@@ -280,19 +280,19 @@ export default function RecommendView() {
   // ----------------------------------------------------------------
   // Handlers
   // ----------------------------------------------------------------
-  const openFormWithPlace = useCallback(
-    (name: string, lat: number | null, lng: number | null, placeId?: string) => {
-      setPlaceName(name);
-      if (lat && lng) {
-        setPinCoords({ lat, lng });
-        mapRef.current?.flyTo({ center: [lng, lat], zoom: ZOOM_DETAIL, duration: 1200 });
-        setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: ZOOM_DETAIL }));
-      }
-      setFormStep("form");
-      setShowSuggestions(false);
-    },
-    []
-  );
+  const handleConfirmSelection = useCallback(() => {
+    if (!pinCoords) return;
+    setFormStep("form");
+    setShowSuggestions(false);
+
+    const bottomPadding = typeof window !== "undefined" ? window.innerHeight * 0.78 : 500;
+    mapRef.current?.flyTo({
+      center: [pinCoords.lng, pinCoords.lat],
+      zoom: ZOOM_DETAIL,
+      padding: { bottom: bottomPadding, top: 0, left: 0, right: 0 },
+      duration: 1000,
+    });
+  }, [pinCoords]);
 
   const handleSelectSuggestion = (s: SearchSuggestion) => {
     setSearchQuery(s.name);
@@ -305,11 +305,18 @@ export default function RecommendView() {
       source: "mapbox",
     });
     setPlaceAddress(s.address || "");
-    openFormWithPlace(s.name, s.latitude, s.longitude);
+    setPlaceName(s.name);
+    if (s.latitude !== null && s.longitude !== null) {
+      const lat = s.latitude;
+      const lng = s.longitude;
+      setPinCoords({ lat, lng });
+      mapRef.current?.flyTo({ center: [lng, lat], zoom: ZOOM_DETAIL, duration: 1200 });
+      setViewState((prev) => ({ ...prev, latitude: lat, longitude: lng, zoom: ZOOM_DETAIL }));
+    }
+    setShowSuggestions(false);
   };
 
   const handleMapClick = (evt: any) => {
-    // Only handle click if the target is the map canvas itself
     const target = evt.originalEvent?.target as HTMLElement | undefined;
     if (!target || !target.classList.contains("mapboxgl-canvas")) {
       return;
@@ -359,6 +366,14 @@ export default function RecommendView() {
 
     setFormStep("form");
     setShowSuggestions(false);
+
+    const bottomPadding = typeof window !== "undefined" ? window.innerHeight * 0.78 : 500;
+    mapRef.current?.flyTo({
+      center: [lng, lat],
+      zoom: ZOOM_DETAIL,
+      padding: { bottom: bottomPadding, top: 0, left: 0, right: 0 },
+      duration: 1000,
+    });
   };
 
   const handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -375,8 +390,15 @@ export default function RecommendView() {
 
   const handleCloseForm = () => {
     setFormStep("map");
-    setPinCoords(null);
-    setSelectedSearchResult(null);
+    const map = mapRef.current?.getMap?.();
+    if (map) {
+      const center = map.getCenter();
+      map.flyTo({
+        center: [center.lng, center.lat],
+        padding: { bottom: 0, top: 0, left: 0, right: 0 },
+        duration: 500,
+      });
+    }
   };
 
   const resetAll = () => {
@@ -589,9 +611,28 @@ export default function RecommendView() {
             cursor={formStep === "map" ? "crosshair" : "grab"}
           >
             {pinCoords && (
-              <Marker longitude={pinCoords.lng} latitude={pinCoords.lat} anchor="bottom">
-                <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green-700 text-white shadow-lg shadow-brand-green-700/40 border-2 border-white animate-in zoom-in-75 duration-200">
-                  <MapPin className="h-5 w-5" />
+              <Marker 
+                longitude={pinCoords.lng} 
+                latitude={pinCoords.lat} 
+                anchor="bottom"
+                onClick={(e) => {
+                  e.originalEvent.stopPropagation();
+                  if (formStep === "map") {
+                    handleConfirmSelection();
+                  }
+                }}
+              >
+                <div className="relative flex flex-col items-center cursor-pointer select-none">
+                  {/* Pin */}
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-brand-green-700 text-white shadow-lg shadow-brand-green-700/40 border-2 border-white animate-in zoom-in-75 duration-200">
+                    <MapPin className="h-5 w-5" />
+                  </div>
+                  {/* Place Name Label */}
+                  {placeName && (
+                    <div className="absolute top-full mt-1.5 left-1/2 -translate-x-1/2 max-w-[180px] bg-white/95 backdrop-blur-sm border border-slate-100 rounded-xl px-2.5 py-1.5 shadow-[0_4px_12px_rgba(0,0,0,0.08)] text-[11px] font-bold text-slate-800 text-center whitespace-nowrap overflow-hidden text-ellipsis animate-in fade-in duration-200">
+                      {placeName}
+                    </div>
+                  )}
                 </div>
               </Marker>
             )}
@@ -686,9 +727,7 @@ export default function RecommendView() {
         onTouchEnd={(e) => e.stopPropagation()}
         className={`absolute left-4 right-4 z-20 transition-all duration-300 ${
           formStep === "form"
-            ? locationToast
-              ? "top-[4.5rem] opacity-60 pointer-events-none"
-              : "top-4 opacity-60 pointer-events-none"
+            ? "opacity-0 pointer-events-none scale-95 invisible"
             : locationToast
               ? "top-[4.5rem]"
               : "top-4"
