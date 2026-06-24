@@ -74,7 +74,7 @@ export async function getAdminData() {
   // Fetch profiles
   const { data: profiles, error: profilesError } = await supabaseAdmin
     .from("profiles")
-    .select("id, username, full_name, created_at, avatar_url")
+    .select("id, username, full_name, created_at, avatar_url, banned_at")
     .order("created_at", { ascending: false });
 
   if (profilesError) throw profilesError;
@@ -122,6 +122,7 @@ export async function getAdminData() {
       created_at: p.created_at,
       email: authUser?.email || "Keine E-Mail",
       activityCount: userActivityCounts[p.id] || 0,
+      banned: !!p.banned_at,
     };
   });
 
@@ -175,6 +176,49 @@ export async function getAdminData() {
     };
   });
 
+  // Fetch pending reports (newest first), enriched with the reported post + author + reporter.
+  const { data: rawReports, error: reportsErr } = await supabaseAdmin
+    .from("reports")
+    .select("id, created_at, activity_id, reporter_id")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+
+  if (reportsErr) throw reportsErr;
+
+  const enrichedReports = (rawReports ?? []).map((r) => {
+    const activity = allActivities.find((a) => a.id === r.activity_id) || null;
+    const author = activity ? profiles.find((p) => p.id === activity.user_id) || null : null;
+    const authorAuth = author ? authUsers.find((au) => au.id === author.id) : null;
+    const reporter = profiles.find((p) => p.id === r.reporter_id) || null;
+    return {
+      id: r.id,
+      created_at: r.created_at,
+      activity: activity
+        ? {
+            id: activity.id,
+            place_name: activity.place_name,
+            description: activity.description || "",
+            image_urls: Array.isArray(activity.image_urls) ? activity.image_urls : [],
+          }
+        : null,
+      author: author
+        ? {
+            id: author.id,
+            full_name: author.full_name || "Kein Name",
+            username: author.username || "Kein Username",
+            email: authorAuth?.email || "Keine E-Mail",
+          }
+        : null,
+      reporter: reporter
+        ? {
+            id: reporter.id,
+            full_name: reporter.full_name || "Kein Name",
+            username: reporter.username || "Kein Username",
+          }
+        : null,
+    };
+  });
+
   return {
     stats: {
       users: usersRes.count || 0,
@@ -187,11 +231,13 @@ export async function getAdminData() {
       inviteUses: totalInviteUses,
       comments: commentsRes.count || 0,
       superlikes: totalSuperlikes,
+      reportsPending: enrichedReports.length,
     },
     categoryCounts,
     users: enrichedUsers,
     activities: enrichedActivities,
     invites: enrichedInvites,
+    reports: enrichedReports,
   };
 }
 
@@ -291,4 +337,119 @@ export async function deleteInviteLinkAdmin(linkId: string) {
   }
 
   return { success: true, id: linkId };
+}
+
+/**
+ * Resolve a reported post. `delete_post` removes just the post (reuses the
+ * activity-delete cleanup); `ban_user` bans the post's author from logging in and
+ * deletes ALL of their posts + comments; `ignore` dismisses the report.
+ * Returns the affected author id (for `ban_user`) so the client can prune the list.
+ */
+export async function resolveReportAdmin(
+  reportId: string,
+  action: "ban_user" | "delete_post" | "ignore"
+) {
+  const { isAdmin } = await checkAdminStatus();
+  if (!isAdmin) {
+    throw new Error("Nicht autorisiert. Zugriff verweigert.");
+  }
+
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new Error("Supabase-Admin-Client konnte nicht initialisiert werden.");
+  }
+
+  const { data: report } = await supabaseAdmin
+    .from("reports")
+    .select("id, activity_id")
+    .eq("id", reportId)
+    .maybeSingle();
+
+  if (!report) {
+    throw new Error("Meldung nicht gefunden.");
+  }
+
+  if (action === "ignore") {
+    await supabaseAdmin
+      .from("reports")
+      .update({ status: "dismissed", resolution: "ignored", resolved_at: new Date().toISOString() })
+      .eq("id", reportId);
+    return { success: true, activityId: report.activity_id };
+  }
+
+  if (action === "delete_post") {
+    // Deletes the post + its comments/wishlist + storage; the report row is then
+    // cascade-deleted via the reports.activity_id FK (ON DELETE CASCADE).
+    await deleteActivityAdmin(report.activity_id);
+    return { success: true, activityId: report.activity_id };
+  }
+
+  // action === "ban_user": ban the post's author and wipe all their content.
+  const { data: activity } = await supabaseAdmin
+    .from("activities")
+    .select("user_id")
+    .eq("id", report.activity_id)
+    .maybeSingle();
+
+  const authorId = activity?.user_id;
+  if (!authorId) {
+    throw new Error("Beitrag oder Autor nicht gefunden.");
+  }
+
+  // 1. Ban login (≈100 years).
+  const { error: banErr } = await supabaseAdmin.auth.admin.updateUserById(authorId, {
+    ban_duration: "876000h",
+  });
+  if (banErr) {
+    console.error("Admin-Fehler beim Bannen des Nutzers:", banErr);
+    throw new Error("Nutzer konnte nicht gebannt werden.");
+  }
+  await supabaseAdmin
+    .from("profiles")
+    .update({ banned_at: new Date().toISOString() })
+    .eq("id", authorId);
+
+  // 2. Delete all of the author's posts (reuses comment/wishlist/storage cleanup;
+  //    cascade-deletes any reports on those posts).
+  const { data: authorActivities } = await supabaseAdmin
+    .from("activities")
+    .select("id")
+    .eq("user_id", authorId);
+
+  for (const act of authorActivities ?? []) {
+    try {
+      await deleteActivityAdmin(act.id);
+    } catch (err) {
+      console.error("Admin-Fehler beim Löschen eines Beitrags des gebannten Nutzers:", err);
+    }
+  }
+
+  // 3. Delete the author's comments on other users' posts.
+  await supabaseAdmin.from("activity_comments").delete().eq("user_id", authorId);
+
+  return { success: true, authorId };
+}
+
+/** Lift a ban: re-enable login and clear the profile's banned_at marker. */
+export async function unbanUserAdmin(userId: string) {
+  const { isAdmin } = await checkAdminStatus();
+  if (!isAdmin) {
+    throw new Error("Nicht autorisiert. Zugriff verweigert.");
+  }
+
+  const supabaseAdmin = getSupabaseAdminClient();
+  if (!supabaseAdmin) {
+    throw new Error("Supabase-Admin-Client konnte nicht initialisiert werden.");
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+    ban_duration: "none",
+  });
+  if (error) {
+    console.error("Admin-Fehler beim Entbannen des Nutzers:", error);
+    throw new Error("Bann konnte nicht aufgehoben werden.");
+  }
+  await supabaseAdmin.from("profiles").update({ banned_at: null }).eq("id", userId);
+
+  return { success: true, id: userId };
 }

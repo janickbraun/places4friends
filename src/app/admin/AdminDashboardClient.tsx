@@ -19,15 +19,23 @@ import {
   Mail,
   UserCheck,
   Percent,
+  Flag,
+  Ban,
 } from "lucide-react";
-import { getAdminData, deleteActivityAdmin, deleteInviteLinkAdmin } from "./actions";
+import {
+  getAdminData,
+  deleteActivityAdmin,
+  deleteInviteLinkAdmin,
+  resolveReportAdmin,
+  unbanUserAdmin,
+} from "./actions";
 import { formatTimestamp, getUserColorClass } from "@/lib/auth/placeFormatting";
 import ConfirmDialog from "@/components/ConfirmDialog";
 import Toast from "@/components/Toast";
 import { getAvatarUrl } from "@/lib/avatar";
 
 type AdminData = Awaited<ReturnType<typeof getAdminData>>;
-type Tab = "overview" | "users" | "activities" | "invites";
+type Tab = "overview" | "users" | "activities" | "reports" | "invites";
 
 export default function AdminDashboardClient() {
   const [loading, setLoading] = useState(true);
@@ -43,6 +51,8 @@ export default function AdminDashboardClient() {
   const [deletingActivityId, setDeletingActivityId] = useState<string | null>(null);
   const [deletingInviteId, setDeletingInviteId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
+  const [resolvingReportId, setResolvingReportId] = useState<string | null>(null);
+  const [unbanningId, setUnbanningId] = useState<string | null>(null);
   
   // Toast state
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -120,6 +130,59 @@ export default function AdminDashboardClient() {
     } finally {
       setActionLoading(false);
       setDeletingInviteId(null);
+    }
+  };
+
+  const handleResolveReport = async (
+    reportId: string,
+    action: "ban_user" | "delete_post" | "ignore"
+  ) => {
+    setResolvingReportId(reportId);
+    try {
+      const res = await resolveReportAdmin(reportId, action);
+      const messages: Record<typeof action, string> = {
+        ban_user: "Nutzer gebannt und alle Inhalte entfernt.",
+        delete_post: "Beitrag gelöscht.",
+        ignore: "Meldung ignoriert.",
+      };
+      showToast(messages[action]);
+      if (data) {
+        let remaining = data.reports;
+        if (action === "ban_user" && "authorId" in res && res.authorId) {
+          remaining = data.reports.filter((rep) => rep.author?.id !== res.authorId);
+        } else if (action === "delete_post" && "activityId" in res && res.activityId) {
+          remaining = data.reports.filter((rep) => rep.activity?.id !== res.activityId);
+        } else {
+          remaining = data.reports.filter((rep) => rep.id !== reportId);
+        }
+        setData({
+          ...data,
+          reports: remaining,
+          stats: { ...data.stats, reportsPending: remaining.length },
+        });
+      }
+    } catch (err: any) {
+      showToast(err.message || "Aktion fehlgeschlagen.", "error");
+    } finally {
+      setResolvingReportId(null);
+    }
+  };
+
+  const handleUnban = async (userId: string) => {
+    setUnbanningId(userId);
+    try {
+      await unbanUserAdmin(userId);
+      showToast("Bann aufgehoben.");
+      if (data) {
+        setData({
+          ...data,
+          users: data.users.map((u) => (u.id === userId ? { ...u, banned: false } : u)),
+        });
+      }
+    } catch (err: any) {
+      showToast(err.message || "Aktion fehlgeschlagen.", "error");
+    } finally {
+      setUnbanningId(null);
     }
   };
 
@@ -223,6 +286,7 @@ export default function AdminDashboardClient() {
           { id: "overview", label: "Übersicht" },
           { id: "users", label: "Benutzer" },
           { id: "activities", label: "Beiträge" },
+          { id: "reports", label: "Gemeldet" },
           { id: "invites", label: "Einladungen" },
         ].map((tab) => (
           <button
@@ -238,6 +302,11 @@ export default function AdminDashboardClient() {
             }`}
           >
             {tab.label}
+            {tab.id === "reports" && data.stats.reportsPending > 0 ? (
+              <span className="ml-1 inline-flex items-center rounded-full bg-rose-500 px-1.5 py-0.5 text-[9px] font-bold text-white">
+                {data.stats.reportsPending}
+              </span>
+            ) : null}
           </button>
         ))}
       </div>
@@ -448,7 +517,7 @@ export default function AdminDashboardClient() {
                         </div>
                       </div>
 
-                      <div className="flex flex-col items-end flex-shrink-0">
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                         <div className="rounded-xl bg-brand-green-50 px-2 py-1 text-center">
                           <span className="text-[10px] font-bold text-brand-green-600 block">
                             {user.activityCount}
@@ -457,6 +526,17 @@ export default function AdminDashboardClient() {
                             Orte
                           </span>
                         </div>
+                        {user.banned ? (
+                          <button
+                            onClick={() => handleUnban(user.id)}
+                            disabled={unbanningId === user.id}
+                            className="flex items-center gap-1 rounded-lg bg-rose-50 px-2 py-1 text-[9px] font-bold text-rose-600 hover:bg-rose-100 transition disabled:opacity-50"
+                            title="Bann aufheben"
+                          >
+                            <Ban className="h-3 w-3" />
+                            {unbanningId === user.id ? "..." : "Entbannen"}
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   );
@@ -592,6 +672,120 @@ export default function AdminDashboardClient() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Tab: Reported content */}
+        {activeTab === "reports" && (
+          <div className="space-y-4 page-transition">
+            <div className="bg-slate-100/50 rounded-2xl p-3 border border-slate-200/50 text-[10px] text-slate-500 leading-relaxed">
+              Von Nutzern gemeldete Beiträge. Entscheide pro Meldung: den Autor bannen
+              (Login gesperrt + alle Beiträge und Kommentare gelöscht), nur den Beitrag
+              löschen, oder die Meldung ignorieren.
+            </div>
+
+            <div className="space-y-3.5">
+              {data.reports.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white py-12 text-center">
+                  <p className="text-xs text-slate-400">Keine offenen Meldungen.</p>
+                </div>
+              ) : (
+                data.reports.map((rep) => {
+                  const activity = rep.activity;
+                  const author = rep.author;
+                  const busy = resolvingReportId === rep.id;
+                  return (
+                    <div
+                      key={rep.id}
+                      className="rounded-2xl border border-rose-100 bg-white overflow-hidden shadow-sm"
+                    >
+                      {/* Reporter + time */}
+                      <div className="flex items-center justify-between gap-2 border-b border-slate-50 bg-rose-50/40 px-3.5 py-2">
+                        <div className="flex items-center gap-1.5 text-[10px] font-semibold text-rose-600">
+                          <Flag className="h-3.5 w-3.5" />
+                          Gemeldet von {rep.reporter ? rep.reporter.full_name : "Unbekannt"}
+                        </div>
+                        <span className="text-[9px] text-slate-400 font-medium">
+                          {formatTimestamp(rep.created_at)}
+                        </span>
+                      </div>
+
+                      {/* Reported post */}
+                      {activity ? (
+                        <div className="p-3.5 space-y-2">
+                          <div>
+                            <h4 className="text-xs font-extrabold text-slate-800 leading-snug">
+                              {activity.place_name}
+                            </h4>
+                            <p className="text-[9px] text-slate-400 mt-0.5">
+                              von {author ? `${author.full_name} (${author.email})` : "Unbekannt"}
+                            </p>
+                          </div>
+                          {activity.description && (
+                            <p className="text-xs text-slate-600 leading-relaxed italic bg-slate-50/50 rounded-xl p-2.5 border border-slate-100/50">
+                              &ldquo;{activity.description}&rdquo;
+                            </p>
+                          )}
+                          {activity.image_urls.length > 0 && (
+                            <div className="grid grid-cols-2 gap-1.5 pt-1">
+                              {activity.image_urls.slice(0, 2).map((imgUrl, idx) => (
+                                <div
+                                  key={idx}
+                                  className="aspect-[4/3] rounded-xl bg-slate-100 overflow-hidden border border-slate-100"
+                                >
+                                  <img
+                                    src={
+                                      imgUrl.startsWith("http")
+                                        ? imgUrl
+                                        : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/activity-images/${imgUrl}`
+                                    }
+                                    alt={activity.place_name}
+                                    className="h-full w-full object-cover"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="p-3.5">
+                          <p className="text-[10px] text-slate-400 italic">
+                            Beitrag nicht mehr vorhanden.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 border-t border-slate-50 p-3">
+                        <button
+                          onClick={() => handleResolveReport(rep.id, "ban_user")}
+                          disabled={busy || !author}
+                          className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-rose-600 px-2 py-2 text-[10px] font-bold text-white hover:bg-rose-700 transition disabled:opacity-50"
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                          User bannen
+                        </button>
+                        <button
+                          onClick={() => handleResolveReport(rep.id, "delete_post")}
+                          disabled={busy || !activity}
+                          className="flex-1 flex items-center justify-center gap-1 rounded-xl bg-slate-900 px-2 py-2 text-[10px] font-bold text-white hover:bg-slate-800 transition disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          Beitrag löschen
+                        </button>
+                        <button
+                          onClick={() => handleResolveReport(rep.id, "ignore")}
+                          disabled={busy}
+                          className="flex-1 rounded-xl border border-slate-200 px-2 py-2 text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-50"
+                        >
+                          Ignorieren
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>
