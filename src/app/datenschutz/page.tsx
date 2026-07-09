@@ -44,13 +44,13 @@ export default function DatenschutzPage() {
           <p>Die verantwortliche Stelle für die Datenverarbeitung in dieser App ist:</p>
           <div className="rounded-xl border border-slate-100 bg-white p-3.5 shadow-sm text-xs space-y-1">
             <p className="font-semibold text-slate-800">Janick Braun</p>
-            <p>Ruhe am Bach 5d</p>
+            <p>Krottenkopfstr. 24a</p>
             <p>82377 Penzberg</p>
             <p>Telefon: +49 (0) 160 98640952</p>
             <p>
               E-Mail:{" "}
-              <a href="mailto:janick@secondskate.de" className="text-brand-green-700 hover:underline">
-                janick@secondskate.de
+              <a href="mailto:mail@janickbraun.com" className="text-brand-green-700 hover:underline">
+                mail@janickbraun.com
               </a>
             </p>
           </div>
@@ -199,8 +199,8 @@ export default function DatenschutzPage() {
           </p>
           <p>
             Für weitere Anfragen (z. B. Auskunft oder Widerspruch) wenden Sie sich an{" "}
-            <a href="mailto:janick@secondskate.de" className="text-brand-green-700 hover:underline">
-              janick@secondskate.de
+            <a href="mailto:mail@janickbraun.com" className="text-brand-green-700 hover:underline">
+              mail@janickbraun.com
             </a>
             .
           </p>

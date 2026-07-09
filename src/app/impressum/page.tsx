@@ -34,7 +34,7 @@ export default function ImpressumPage() {
           <h3 className="text-base font-bold text-slate-900">Diensteanbieter</h3>
           <p className="font-semibold text-slate-800">Janick Braun</p>
           <p>
-            Ruhe am Bach 5d<br />
+            Krottenkopfstr. 24a<br />
             82377 Penzberg<br />
             Deutschland
           </p>
@@ -44,7 +44,7 @@ export default function ImpressumPage() {
           <h3 className="text-base font-bold text-slate-900">Kontakt</h3>
           <p>
             Telefon: +49 (0) 160 98640952<br />
-            E-Mail: <a href="mailto:janick@secondskate.de" className="text-brand-green-700 hover:underline">janick@secondskate.de</a>
+            E-Mail: <a href="mailto:mail@janickbraun.com" className="text-brand-green-700 hover:underline">mail@janickbraun.com</a>
           </p>
         </section>
 
