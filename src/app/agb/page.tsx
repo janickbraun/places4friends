@@ -34,7 +34,7 @@ export default function AgbPage() {
           <h3 className="text-base font-bold text-slate-900">1. Geltungsbereich</h3>
           <p>
             Diese Nutzungsbedingungen regeln die Nutzung der Web-App places4friends (nachfolgend „App“). Betreiber ist
-            Janick Braun, Ruhe am Bach 5d, 82377 Penzberg (Angaben im{" "}
+            Janick Braun, Krottenkopfstr. 24a, 82377 Penzberg (Angaben im{" "}
             <Link href="/impressum" className="text-brand-green-700 hover:underline">
               Impressum
             </Link>
