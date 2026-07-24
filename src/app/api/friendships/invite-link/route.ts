@@ -48,7 +48,7 @@ export async function POST(request: Request) {
   }
 
   const origin = new URL(request.url).origin;
-  const url = buildFriendInviteUrl(origin, user.id, token);
+  const url = buildFriendInviteUrl(origin, token);
 
   return NextResponse.json({
     token,

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.janickbraun.places4friends",
+      "sha256_cert_fingerprints": [
+        "C7:39:B8:1B:CE:E8:5D:B1:A9:BE:75:7E:C6:16:7E:A2:6A:3A:87:36:B7:8A:60:A8:AA:B5:4F:FF:E8:EA:A5:7F"
+      ]
+    }
+  }
+]

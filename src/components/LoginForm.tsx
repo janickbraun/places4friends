@@ -6,10 +6,14 @@ import Link from "next/link";
 import { Mail, Lock, ArrowRight, Loader2, ArrowLeft } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getLoginErrorMessage } from "@/lib/authErrors";
+import { safeNextPath } from "@/lib/nextPath";
 
 export default function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Where to go after signing in. Set by the friend-invite page so the invite
+  // isn't lost when someone opens the link without being logged in.
+  const next = safeNextPath(searchParams.get("next")) ?? "/";
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -61,7 +65,7 @@ export default function LoginForm() {
       return;
     }
 
-    router.push("/");
+    router.push(next);
     router.refresh();
   };
 
@@ -73,7 +77,7 @@ export default function LoginForm() {
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/confirm`,
+        redirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
       },
     });
 

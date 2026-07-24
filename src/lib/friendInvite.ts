@@ -5,13 +5,15 @@ export const FRIEND_INVITE_VALIDITY_DAYS = 30;
 
 export type FriendInviteValidationError = "not_found" | "expired" | "max_uses";
 
-export function buildFriendInviteUrl(
-  origin: string,
-  creatorId: string,
-  token: string
-): string {
-  const params = new URLSearchParams({ invite: token });
-  return `${origin}/profile/${creatorId}?${params.toString()}`;
+/**
+ * Invite links point at `/invite/<token>`, the one path claimed as an iOS
+ * universal link / Android app link, so opening one on a phone with the app
+ * installed goes straight into the app. `/invite` resolves the token to the
+ * creator's profile. Links previously issued in the `/profile/<id>?invite=`
+ * shape still work — that page keeps handling the query param.
+ */
+export function buildFriendInviteUrl(origin: string, token: string): string {
+  return `${origin}/invite/${encodeURIComponent(token)}`;
 }
 
 export async function createFriendInviteLink(): Promise<{

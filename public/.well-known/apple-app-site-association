@@ -1,0 +1,10 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appID": "3U3AMBZ86X.com.janickbraun.places4friends",
+        "paths": ["/invite/*"]
+      }
+    ]
+  }
+}

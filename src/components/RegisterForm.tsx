@@ -2,12 +2,18 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { Mail, Lock, User, AtSign, ArrowRight, Loader2 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { getSignupErrorMessage } from "@/lib/authErrors";
+import { safeNextPath } from "@/lib/nextPath";
 import { sendVerificationEmailAction } from "@/app/login/actions";
 
 export default function RegisterForm() {
+  const searchParams = useSearchParams();
+  // Set by the friend-invite page, so signing up through an invite link lands
+  // on the inviter's profile instead of the map.
+  const next = safeNextPath(searchParams.get("next")) ?? "/";
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -126,7 +132,7 @@ export default function RegisterForm() {
     // action above can cancel a soft client navigation, leaving the user stuck on
     // the register page. A full reload also guarantees the new session cookie is
     // applied to server components.
-    window.location.assign("/");
+    window.location.assign(next);
   };
 
   const handleGoogleRegister = async () => {
@@ -142,7 +148,7 @@ export default function RegisterForm() {
     const { error: authError } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
-        redirectTo: `${window.location.origin}/auth/confirm`,
+        redirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
       },
     });
 

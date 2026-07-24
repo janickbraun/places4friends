@@ -3,6 +3,7 @@ import LegalFooter from "@/components/LegalFooter";
 import Link from "next/link";
 import { MapPin } from "lucide-react";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const metadata: Metadata = {
   title: "Registrieren",
@@ -29,7 +30,11 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        <RegisterForm />
+        {/* Suspense because RegisterForm reads `?next=` via useSearchParams,
+            which opts the subtree into client-side rendering. */}
+        <Suspense fallback={<div className="h-[250px] w-full rounded-2xl bg-white border border-slate-100 p-6 shadow-sm animate-pulse" />}>
+          <RegisterForm />
+        </Suspense>
 
         <p className="mt-6 text-center text-xs text-slate-500">
           Bereits ein Konto?{" "}
