@@ -8,9 +8,9 @@ const nextConfig: NextConfig = {
         // It has no file extension, so it would otherwise be guessed as
         // text/plain and iOS would refuse to associate the domain.
         //
-        // This entry only covers `next start` locally — in production Vercel
-        // serves everything in public/ straight from its CDN, bypassing the Next
-        // server, so the deployed header comes from vercel.json instead. Keep
+        // This entry only covers `next start` locally — in production the
+        // Netlify CDN serves everything in public/ directly, bypassing the Next
+        // server, so the deployed header comes from netlify.toml instead. Keep
         // the two in sync.
         source: "/.well-known/apple-app-site-association",
         headers: [{ key: "Content-Type", value: "application/json" }],

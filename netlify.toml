@@ -1,0 +1,12 @@
+# Deliberately contains no [build] section: build settings come from the Netlify
+# UI, and adding them here would silently take over.
+#
+# Apple requires the app-association file to be served as application/json. It
+# has no file extension, so Netlify's CDN guesses text/plain and iOS refuses to
+# associate the domain — which would break the /invite universal links.
+# next.config.ts sets the same header for local `next start`; the CDN serves
+# public/ directly in production, so this is the one that counts.
+[[headers]]
+  for = "/.well-known/apple-app-site-association"
+  [headers.values]
+    Content-Type = "application/json"
