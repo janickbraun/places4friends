@@ -73,6 +73,24 @@ export default function DatenschutzPage() {
             TikTok. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Vertragserfüllung), für die freiwilligen Angaben
             Art. 6 Abs. 1 lit. a DSGVO (Einwilligung) – Sie können sie in den Einstellungen jederzeit wieder entfernen.
           </p>
+          <p>
+            In der mobilen App geben Sie Namen, Profilbild und Benutzernamen an, bevor Sie Ihr Konto anlegen. Diese
+            Angaben bleiben bis zur Registrierung ausschließlich auf Ihrem Gerät; Ihr Profilbild wird dabei bereits auf
+            dem Gerät verkleinert und von Metadaten wie dem Aufnahmeort befreit. Brechen Sie die Registrierung ab, löscht
+            die App einen Entwurf, der sieben Tage lang nicht bearbeitet wurde, beim nächsten Start; mit dem Löschen
+            der App ist er ebenfalls entfernt. Eine Ausnahme gilt für die Prüfung, ob ein gewünschter
+            Benutzername noch frei ist: Dafür übermittelt die App den Benutzernamen an uns. Wir gleichen ihn mit den
+            vergebenen Benutzernamen ab und speichern ihn nicht. Um diese Abfrage vor massenhaftem Missbrauch zu
+            schützen, zählen wir die Anfragen je IP-Adresse; gespeichert wird dafür nur ein nicht umkehrbarer Hashwert
+            der IP-Adresse zusammen mit einem Zähler für ein Zeitfenster von einer Stunde, danach wird er gelöscht.
+            Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO (Durchführung vorvertraglicher Maßnahmen auf Ihre Anfrage)
+            sowie für die Begrenzung Art. 6 Abs. 1 lit. f DSGVO (Schutz vor Missbrauch).
+          </p>
+          <p>
+            Bei der Registrierung stimmen Sie unseren Nutzungsbedingungen zu. Damit wir die Zustimmung nachweisen
+            können, speichern wir, welcher Fassung Sie wann zugestimmt haben. Diese Angabe ist nicht öffentlich und in
+            Ihrer Datenauskunft enthalten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b und lit. f DSGVO.
+          </p>
 
           <h4 className="font-semibold text-slate-800">Empfehlungen und Aktivitäten</h4>
           <p>
@@ -236,11 +254,34 @@ export default function DatenschutzPage() {
           <h4 className="font-semibold text-slate-800">Kontaktabgleich (nur mobile App)</h4>
           <p>
             In der mobilen App können Sie freiwillig Ihr Adressbuch mit places4friends abgleichen, um Kontakte zu finden,
-            die die App bereits nutzen. Der Abgleich erfolgt ausschließlich über Prüfsummen: Die E-Mail-Adressen Ihrer
-            Kontakte werden auf dem Gerät zu SHA-256-Hashwerten umgerechnet und nur diese Hashwerte werden übertragen und
-            mit den Hashwerten registrierter Nutzer verglichen. Die Kontaktdaten selbst verlassen Ihr Gerät nicht und
-            werden von uns nicht gespeichert. Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die Sie
-            durch das Verweigern bzw. Entziehen der Kontaktberechtigung in den Geräteeinstellungen widerrufen können.
+            die die App bereits nutzen. Der Abgleich erfolgt über Prüfsummen: Die E-Mail-Adressen und Telefonnummern
+            Ihrer Kontakte werden auf dem Gerät vereinheitlicht und zu SHA-256-Hashwerten umgerechnet; nur diese
+            Hashwerte werden übertragen und mit den bei uns hinterlegten Angaben registrierter Nutzer verglichen. Namen
+            und sonstige Kontaktdaten verlassen Ihr Gerät nicht, und die übermittelten Hashwerte werden nach dem
+            Vergleich verworfen, nicht gespeichert. Wir weisen darauf hin, dass sich Hashwerte von Telefonnummern wegen
+            der begrenzten Zahl möglicher Nummern grundsätzlich zurückrechnen ließen; wir tun das nicht. Gefunden wird
+            eine Person über ihre Telefonnummer nur, wenn sie diese Nummer selbst hinterlegt und bestätigt hat (siehe
+            nächster Abschnitt), über eine E-Mail-Adresse nur, wenn sie sich damit registriert hat. Rechtsgrundlage für
+            den Abgleich ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO), die Sie durch das Verweigern bzw. Entziehen
+            der Kontaktberechtigung in den Geräteeinstellungen widerrufen können; für die kurzzeitige Verarbeitung der
+            Hashwerte Ihrer Kontakte, die nicht selbst eingewilligt haben, stützen wir uns auf Art. 6 Abs. 1 lit. f DSGVO
+            (berechtigtes Interesse, einander bekannte Personen zusammenzuführen). Um massenhafte Abfragen zu verhindern,
+            ist die Zahl der Abgleiche je Konto begrenzt.
+          </p>
+
+          <h4 className="font-semibold text-slate-800">Telefonnummer (freiwillig, nur mobile App)</h4>
+          <p>
+            Sie können in der mobilen App Ihre Handynummer hinterlegen, damit Personen, die diese Nummer in ihrem
+            Adressbuch gespeichert haben, Sie beim Kontaktabgleich finden. Damit niemand eine fremde Nummer eintragen
+            kann, bestätigen Sie die Nummer mit einem Code, den wir Ihnen per SMS schicken. Bis zur Bestätigung,
+            höchstens zehn Minuten lang, speichern wir die Nummer zusammen mit einer Prüfsumme des Codes. Nach der
+            Bestätigung speichern wir die Nummer selbst nicht mehr, sondern nur einen mit einem geheimen Schlüssel
+            gebildeten Hashwert (HMAC) sowie die letzten zwei Ziffern, damit Sie in den Einstellungen erkennen, welche
+            Nummer hinterlegt ist. Bestätigt ein anderes Konto später dieselbe Nummer, wird sie bei Ihrem Konto entfernt.
+            Um Missbrauch und Kosten zu begrenzen, zählen wir die angeforderten Codes je Konto und je Nummer (letztere als
+            Hashwert) für höchstens einen Tag. Sie können die Nummer in den Einstellungen jederzeit entfernen; sie ist
+            außerdem in Ihrer Datenauskunft enthalten. Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a
+            DSGVO).
           </p>
 
           <h4 className="font-semibold text-slate-800">Push-Benachrichtigungen (nur mobile App)</h4>
@@ -264,7 +305,7 @@ export default function DatenschutzPage() {
           <p>
             places4friends ist keine öffentliche Plattform: Empfehlungen, Kommentare und Merklisten sind grundsätzlich
             nur für Sie und Ihre bestätigten Freundinnen und Freunde sichtbar. Diese Beschränkung wird serverseitig
-            durchgesetzt. Es gibt jedoch sieben Fälle, in denen Angaben darüber hinaus sichtbar werden, und wir halten
+            durchgesetzt. Es gibt jedoch acht Fälle, in denen Angaben darüber hinaus sichtbar werden, und wir halten
             sie hier ausdrücklich fest:
           </p>
           <ul className="list-disc pl-5 space-y-1 text-xs">
@@ -323,6 +364,14 @@ export default function DatenschutzPage() {
               anderen außerdem als Vorschlag erscheinen, auch ohne gemeinsame Freundinnen und Freunde und ohne dass Sie
               in deren Adressbuch stehen; wie Abschnitt 3 beschreibt, lässt sich <em>diese</em> Anzeige in den
               Einstellungen abschalten. Die Zahl auf Ihrem Profil bleibt davon unberührt.
+            </li>
+            <li>
+              <strong>Wer Ihre Telefonnummer kennt, kann Ihr Profil finden.</strong> Haben Sie in der mobilen App eine
+              Handynummer hinterlegt und bestätigt, erscheint Ihr Profil beim Kontaktabgleich jeder Person als
+              Vorschlag, die diese Nummer in ihrem Adressbuch gespeichert hat, auch wenn Sie mit ihr nicht befreundet
+              sind. Die Nummer selbst wird dabei niemandem angezeigt; erkennbar wird nur, dass das Profil zu einer Nummer
+              gehört, die die andere Person bereits kennt. Ohne hinterlegte Nummer entfällt dieser Weg, und Sie können
+              die Nummer in den Einstellungen jederzeit entfernen.
             </li>
             <li>
               <strong>Der Betreiber hat administrativen Zugriff</strong> zu Moderationszwecken; siehe Abschnitt 5.
@@ -423,6 +472,14 @@ export default function DatenschutzPage() {
             E-Mail-Adresse und der Bestätigungslink an Resend übermittelt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.
           </p>
 
+          <h4 className="font-semibold text-slate-800">seven (Versand von Bestätigungs-SMS)</h4>
+          <p>
+            Zur Bestätigung einer hinterlegten Telefonnummer versenden wir eine SMS über die seven communications GmbH &amp;
+            Co. KG, Willestr. 4–6, 24103 Kiel, Deutschland. Dabei werden Ihre Telefonnummer und der Text der SMS mit dem
+            Bestätigungscode an seven übermittelt. Mit seven besteht ein Vertrag zur Auftragsverarbeitung gemäß Art. 28
+            DSGVO. Rechtsgrundlage ist Ihre Einwilligung (Art. 6 Abs. 1 lit. a DSGVO).
+          </p>
+
           <h4 className="font-semibold text-slate-800">Expo, Apple und Google (Zustellung von Push-Nachrichten)</h4>
           <p>
             Push-Nachrichten der mobilen App werden über den Dienst von Expo (650 Industries, Inc., USA) an die
@@ -474,7 +531,9 @@ export default function DatenschutzPage() {
             oder Ihr Profilbild, werden die zugehörigen Dateien aus dem Speicher entfernt; bereits an Endgeräte
             ausgelieferte Kopien in deren Zwischenspeichern (Caches) entziehen sich unserem Zugriff. IP-basierte
             Zwischenwerte im Server-Arbeitsspeicher werden nach höchstens einer Stunde verworfen. Einladungslinks verfallen
-            nach Ablauf der jeweiligen Gültigkeitsdauer. Push-Token werden beim Abmelden entfernt. Einträge zu
+            nach Ablauf der jeweiligen Gültigkeitsdauer. Push-Token werden beim Abmelden entfernt. Eine noch nicht
+            bestätigte Telefonnummer wird nach zehn Minuten ungültig und bei der nächsten Bestätigung oder beim Entfernen
+            gelöscht; die Zähler für angeforderte SMS-Codes werden nach spätestens zwei Tagen gelöscht. Einträge zu
             Entscheidungen über Inhalte bewahren wir auf, solange Ihr Konto besteht – sie sind der Nachweis, dass eine
             Maßnahme begründet mitgeteilt wurde, und die Grundlage für einen Widerspruch.
           </p>
