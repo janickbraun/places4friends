@@ -471,6 +471,12 @@ export default function DatenschutzPage() {
             Zur Bestätigung Ihrer E-Mail-Adresse versenden wir eine Nachricht über Resend, Inc. (USA). Dabei werden Ihre
             E-Mail-Adresse und der Bestätigungslink an Resend übermittelt. Rechtsgrundlage ist Art. 6 Abs. 1 lit. b DSGVO.
           </p>
+          <p>
+            Ändern Sie Ihre E-Mail-Adresse, gilt die neue Adresse als unbestätigt, bis Sie den an sie gesendeten Link
+            aufrufen. Damit niemand über unseren Dienst massenhaft E-Mails an fremde Adressen auslösen kann, zählen wir die
+            angeforderten Bestätigungs-E-Mails je Konto und je Adresse (letztere als Hashwert) für höchstens einen Tag.
+            Rechtsgrundlage hierfür ist Art. 6 Abs. 1 lit. f DSGVO (Schutz vor Missbrauch).
+          </p>
 
           <h4 className="font-semibold text-slate-800">seven (Versand von Bestätigungs-SMS)</h4>
           <p>
