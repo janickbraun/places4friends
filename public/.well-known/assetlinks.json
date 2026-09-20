@@ -9,5 +9,16 @@
         "C7:39:B8:1B:CE:E8:5D:B1:A9:BE:75:7E:C6:16:7E:A2:6A:3A:87:36:B7:8A:60:A8:AA:B5:4F:FF:E8:EA:A5:7F"
       ]
     }
+  },
+  {
+    "relation": ["delegate_permission/common.get_login_creds"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.janickbraun.places4friends",
+      "sha256_cert_fingerprints": [
+        "C0:27:EA:86:0D:B2:13:D5:C0:B0:49:46:63:53:2D:3D:05:0D:B3:DA:35:A2:CC:53:B4:81:AE:6A:13:A7:33:84",
+        "C7:39:B8:1B:CE:E8:5D:B1:A9:BE:75:7E:C6:16:7E:A2:6A:3A:87:36:B7:8A:60:A8:AA:B5:4F:FF:E8:EA:A5:7F"
+      ]
+    }
   }
 ]

@@ -6,5 +6,8 @@
         "paths": ["/invite/*"]
       }
     ]
+  },
+  "webcredentials": {
+    "apps": ["3U3AMBZ86X.com.janickbraun.places4friends"]
   }
 }
